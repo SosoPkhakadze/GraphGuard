@@ -1,0 +1,14 @@
+{
+  "all_functions": [
+    "ma_add",
+    "ma_get",
+    "ma_init",
+    "main"
+  ],
+  "changed_functions": [
+    "ma_add"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

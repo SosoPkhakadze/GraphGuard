@@ -1,0 +1,16 @@
+{
+  "all_functions": [
+    "lr_init",
+    "lr_remaining",
+    "lr_rotations",
+    "lr_should_rotate",
+    "lr_write",
+    "main"
+  ],
+  "changed_functions": [
+    "lr_write"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

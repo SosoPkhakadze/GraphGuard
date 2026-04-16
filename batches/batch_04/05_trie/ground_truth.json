@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "main",
+    "trie_init",
+    "trie_insert",
+    "trie_search"
+  ],
+  "changed_functions": [
+    "trie_insert"
+  ],
+  "affected_functions": [
+    "main",
+    "trie_search"
+  ]
+}

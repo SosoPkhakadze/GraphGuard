@@ -1,0 +1,32 @@
+=== DIFF ===
+diff --git a/src/minmax.c b/src/minmax.c
+index abc1234..def5678 100644
+--- a/src/minmax.c
++++ b/src/minmax.c
+@@ -1,13 +1,12 @@
+ #include <stdio.h>
+-#include <limits.h>
+ int find_min(int *a, int n) {
+-    int m = INT_MAX;
+-    for (int i = 0; i < n; i++) if (a[i] < m) m = a[i];
++    int m = a[0];
++    for (int i = 1; i < n; i++) if (a[i] < m) m = a[i];
+     return m;
+ }
+ int find_max(int *a, int n) {
+-    int m = INT_MIN;
+-    for (int i = 0; i < n; i++) if (a[i] > m) m = a[i];
++    int m = a[0];
++    for (int i = 1; i < n; i++) if (a[i] > m) m = a[i];
+     return m;
+ }
+ int range(int *a, int n) { return find_max(a,n) - find_min(a,n); }
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  find_max * -> [-]
+  find_min * -> [-]
+  main -> [find_max, find_min, range]
+  range -> [find_max, find_min]

@@ -1,0 +1,13 @@
+diff --git a/src/middleware.c b/src/middleware.c
+index abc1234..def5678 100644
+--- a/src/middleware.c
++++ b/src/middleware.c
+@@ -7,7 +7,7 @@
+ int mw_run(MWC *c, int req, int *resp) {
+     *resp=req;
+     for(int i=0;i<c->n;i++){
+-        int r=c->chain[i](req,resp);
++        int r=c->chain[i](*resp,resp);
+         if(r!=0) return r;
+     }
+     return 0;

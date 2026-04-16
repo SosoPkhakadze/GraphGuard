@@ -1,0 +1,22 @@
+=== DIFF ===
+diff --git a/src/checksum.c b/src/checksum.c
+index abc1234..def5678 100644
+--- a/src/checksum.c
++++ b/src/checksum.c
+@@ -4,7 +4,7 @@
+     for (int i = 0; i < len; i++) {
+         crc ^= data[i];
+         for (int j = 0; j < 8; j++)
+-            crc = (crc & 0x80) ? (unsigned char)((crc<<1)^0x31) : (unsigned char)(crc<<1);
++            crc = (crc & 0x80) ? (unsigned char)((crc<<1)^0x07) : (unsigned char)(crc<<1);
+     }
+     return crc;
+ }
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  crc8 * -> [-]
+  main -> [crc8, verify]
+  verify -> [crc8]

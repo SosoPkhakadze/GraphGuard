@@ -1,0 +1,23 @@
+diff --git a/src/graph.c b/src/graph.c
+index abc1234..def5678 100644
+--- a/src/graph.c
++++ b/src/graph.c
+@@ -12,5 +12,7 @@ void graph_init(int n) {
+ int graph_add_edge(int u, int v) {
++    if (u < 0 || u >= node_count) return -1;
++    if (v < 0 || v >= node_count) return -1;
+     adj[u][v] = 1;
+     return 0;
+ }
+diff --git a/src/bfs.c b/src/bfs.c
+index abc2345..def6789 100644
+--- a/src/bfs.c
++++ b/src/bfs.c
+@@ -5,7 +5,8 @@ static int visited[NODE_MAX];
+ int bfs(int start, int target) {
+     int queue[NODE_MAX];
+     int front = 0, back = 0;
++    for (int i = 0; i < NODE_MAX; i++) visited[i] = 0;
+     visited[start] = 1;
+     queue[back++] = start;
+     while (front < back) {

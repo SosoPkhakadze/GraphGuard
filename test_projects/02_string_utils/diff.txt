@@ -1,0 +1,21 @@
+diff --git a/src/strings.c b/src/strings.c
+index a1b2c3d..d4e5f6g 100644
+--- a/src/strings.c
++++ b/src/strings.c
+@@ -12,7 +12,7 @@
+-    while (i < len) {
++    while (i < j) {
+         char tmp = s[i];
+         s[i] = s[j];
+         s[j] = tmp;
+         i++;
+         j--;
+     }
+@@ -21,6 +21,7 @@
+ char *str_copy(char *dst, const char *src, int max) {
++    if (!dst || !src) return dst;
+     int i = 0;
+     while (i < max - 1 && src[i]) {
+         dst[i] = src[i];
+         i++;
+     }

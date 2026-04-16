@@ -1,0 +1,13 @@
+diff --git a/src/window.c b/src/window.c
+index abc1234..def5678 100644
+--- a/src/window.c
++++ b/src/window.c
+@@ -4,7 +4,7 @@
+     for(int i=0; i<=n-k; i++){
+         int loc=a[i];
+         for(int j=1;j<k;j++) if(a[i+j]<loc) loc=a[i+j];
+-        res=loc;
++        if(i==0||loc<res) res=loc;
+     }
+     return res;
+ }

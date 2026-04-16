@@ -1,0 +1,31 @@
+========================================================================
+Project : 06_dfa
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['dfa_set']
+  Affected : ['main']
+  All fns  : ['dfa_accepts', 'dfa_init', 'dfa_run', 'dfa_set', 'main']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['dfa_set']
+  Predicted affected : ['dfa_run']
+  Concerns : The added boundary check in dfa_set may prevent some transitions from being set, potentially affecting DFA behavior.
+  TP=1  TN=2  FP=1  FN=1  Prec=0.500  Rec=0.500  F1=0.500  Acc=0.600
+  False alarms : ['dfa_run']
+  Missed       : ['main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['dfa_set']
+  Predicted affected : ['main']
+  Concerns : The change adds input validation to dfa_set, which may affect how main handles invalid inputs.
+  TP=2  TN=3  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.500    Friend 2 F1 = 1.000
+========================================================================

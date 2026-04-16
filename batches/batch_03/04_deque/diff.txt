@@ -1,0 +1,13 @@
+diff --git a/src/deque.c b/src/deque.c
+index abc1234..def5678 100644
+--- a/src/deque.c
++++ b/src/deque.c
+@@ -10,7 +10,7 @@
+ int dq_pop_front(Deque *q, int *out) {
+     if(q->n<=0) return -1;
+     *out=q->d[q->front];
+-    q->front++;
++    q->front=(q->front+1)%DQCAP;
+     q->n--;
+     return 0;
+ }

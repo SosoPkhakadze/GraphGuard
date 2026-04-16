@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "cp_acquire",
+    "cp_expire",
+    "cp_init",
+    "cp_release",
+    "main"
+  ],
+  "changed_functions": [
+    "cp_acquire"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

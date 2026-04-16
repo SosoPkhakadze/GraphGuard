@@ -1,0 +1,13 @@
+diff --git a/src/stats.c b/src/stats.c
+index abc1234..def5678 100644
+--- a/src/stats.c
++++ b/src/stats.c
+@@ -5,7 +5,7 @@
+ double variance(double *a, int n) {
+     double m=mean(a,n), s=0;
+     for(int i=0;i<n;i++){double d=a[i]-m; s+=d*d;}
+-    return s/(n-1);
++    return s/n;
+ }
+ double stddev(double *a, int n) {
+     double v=variance(a,n), r=v;

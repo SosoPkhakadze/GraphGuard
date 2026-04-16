@@ -1,0 +1,23 @@
+=== DIFF ===
+diff --git a/src/env.c b/src/env.c
+index abc1234..def5678 100644
+--- a/src/env.c
++++ b/src/env.c
+@@ -15,6 +15,7 @@
+     int kl=eq-line; if(kl>=64) return -1;
+     strncpy(s->e[s->n].k,line,kl); s->e[s->n].k[kl]='\0';
+     strncpy(s->e[s->n].v,eq+1,127);
++    trim_end(s->e[s->n].v);
+     s->n++; return 0;
+ }
+ const char *env_get(Env *s, const char *k, const char *def) {
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  env_get -> [-]
+  env_init -> [-]
+  env_load * -> [trim_end]
+  main -> [env_get, env_init, env_load]
+  trim_end -> [-]

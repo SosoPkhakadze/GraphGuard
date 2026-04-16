@@ -1,0 +1,13 @@
+diff --git a/src/scheduler.c b/src/scheduler.c
+index abc1234..def5678 100644
+--- a/src/scheduler.c
++++ b/src/scheduler.c
+@@ -12,7 +12,7 @@
+     int best=-1;
+     for(int i=0;i<s->n;i++){
+         if(!s->t[i].ready) continue;
+-        if(best<0 || s->t[i].prio>=s->t[best].prio) best=i;
++        if(best<0 || s->t[i].prio>s->t[best].prio) best=i;
+     }
+     if(best>=0) s->t[best].ready=0;
+     return best>=0 ? s->t[best].id : -1;

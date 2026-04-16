@@ -1,0 +1,30 @@
+========================================================================
+Project : 09_pubsub
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['ps_pub']
+  Affected : ['main']
+  All fns  : ['main', 'on_msg', 'ps_count', 'ps_init', 'ps_pub', 'ps_sub']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['ps_pub']
+  Predicted affected : ['functions that call ps_pub']
+  Concerns : The change modifies the behavior to notify all handlers for a topic, which could lead to unexpected multiple notifications.
+  TP=1  TN=4  FP=0  FN=1  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.833
+  Missed       : ['main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['ps_pub']
+  Predicted affected : ['main']
+  Concerns : The change in ps_pub affects how many handlers are called, potentially impacting message processing.
+  TP=2  TN=4  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000
+========================================================================

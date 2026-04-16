@@ -1,0 +1,16 @@
+{
+  "all_functions": [
+    "cb_allow",
+    "cb_failure",
+    "cb_init",
+    "cb_state",
+    "cb_success",
+    "main"
+  ],
+  "changed_functions": [
+    "cb_allow"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

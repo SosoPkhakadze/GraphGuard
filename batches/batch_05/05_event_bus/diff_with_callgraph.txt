@@ -1,0 +1,25 @@
+=== DIFF ===
+diff --git a/src/eventbus.c b/src/eventbus.c
+index abc1234..def5678 100644
+--- a/src/eventbus.c
++++ b/src/eventbus.c
+@@ -14,7 +14,7 @@
+ }
+ int eb_emit(EB *b, int ev, void *data) {
+     for(int i=0;i<b->n;i++)
+-        if(b->s[i].ev==ev){ b->s[i].h[0](ev,data); return 1; }
++        if(b->s[i].ev==ev){ for(int j=0;j<b->s[i].n;j++) b->s[i].h[j](ev,data); return b->s[i].n; }
+     return 0;
+ }
+ int eb_count(EB *b, int ev) {
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  eb_count -> [-]
+  eb_emit * -> [-]
+  eb_init -> [-]
+  eb_sub -> [-]
+  main -> [eb_count, eb_emit, eb_init, eb_sub]
+  on_ev -> [-]

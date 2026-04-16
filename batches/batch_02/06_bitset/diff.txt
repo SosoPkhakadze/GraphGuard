@@ -1,0 +1,17 @@
+diff --git a/src/bitset.c b/src/bitset.c
+index abc1234..def5678 100644
+--- a/src/bitset.c
++++ b/src/bitset.c
+@@ -6,8 +6,10 @@
+ int bs_test(Bitset *b, int i) { return (b->w[i/32]>>(i%32))&1; }
+ int bs_count(Bitset *b) {
+     int n = 0;
+-    for (int i = 0; i < WORDS; i++)
+-        if (b->w[i]) n++;
++    for (int i = 0; i < WORDS; i++) {
++        unsigned int w = b->w[i];
++        while (w) { n += w&1; w>>=1; }
++    }
+     return n;
+ }
+ int main(void) {

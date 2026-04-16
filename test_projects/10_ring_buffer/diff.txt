@@ -1,0 +1,24 @@
+diff --git a/src/buf.c b/src/buf.c
+index abc1234..def5678 100644
+--- a/src/buf.c
++++ b/src/buf.c
+@@ -9,7 +9,9 @@ void buf_init(RingBuf *b) {
+ int buf_write(RingBuf *b, int val) {
+-    if (b->tail >= BUF_SIZE) return -1;
+-    b->data[b->tail++] = val;
++    if (b->count >= BUF_SIZE) return -1;
++    b->data[b->tail] = val;
++    b->tail = (b->tail + 1) % BUF_SIZE;
++    b->count++;
+     return 0;
+ }
+@@ -15,7 +17,9 @@ int buf_write(RingBuf *b, int val) {
+ int buf_read(RingBuf *b, int *out) {
+-    if (b->head >= b->tail) return -1;
+-    *out = b->data[b->head++];
++    if (b->count <= 0) return -1;
++    *out = b->data[b->head];
++    b->head = (b->head + 1) % BUF_SIZE;
++    b->count--;
+     return 0;
+ }

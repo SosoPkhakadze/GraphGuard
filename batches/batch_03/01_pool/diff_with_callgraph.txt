@@ -1,0 +1,28 @@
+=== DIFF ===
+diff --git a/src/pool.c b/src/pool.c
+index abc1234..def5678 100644
+--- a/src/pool.c
++++ b/src/pool.c
+@@ -3,9 +3,10 @@
+ typedef struct { char mem[POOL_SIZE]; int used; } Pool;
+ void pool_init(Pool *p) { p->used=0; }
+ void *pool_alloc(Pool *p, int size) {
+-    if (p->used+size > POOL_SIZE) return 0;
++    int aligned = (size+3)&~3;
++    if (p->used+aligned > POOL_SIZE) return 0;
+     void *ptr = p->mem + p->used;
+-    p->used += size;
++    p->used += aligned;
+     return ptr;
+ }
+ void pool_reset(Pool *p) { p->used=0; }
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  main -> [pool_alloc, pool_init, pool_reset, pool_used]
+  pool_alloc * -> [-]
+  pool_init -> [-]
+  pool_reset -> [-]
+  pool_used -> [-]

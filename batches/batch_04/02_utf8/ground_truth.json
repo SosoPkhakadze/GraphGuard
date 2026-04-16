@@ -1,0 +1,14 @@
+{
+  "all_functions": [
+    "main",
+    "utf8_charlen",
+    "utf8_strlen",
+    "utf8_valid"
+  ],
+  "changed_functions": [
+    "utf8_strlen"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

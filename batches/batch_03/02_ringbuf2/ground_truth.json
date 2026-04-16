@@ -1,0 +1,16 @@
+{
+  "all_functions": [
+    "main",
+    "rb_init",
+    "rb_peek",
+    "rb_pop",
+    "rb_push",
+    "rb_size"
+  ],
+  "changed_functions": [
+    "rb_peek"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

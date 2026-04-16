@@ -1,0 +1,13 @@
+diff --git a/src/connpool.c b/src/connpool.c
+index abc1234..def5678 100644
+--- a/src/connpool.c
++++ b/src/connpool.c
+@@ -8,7 +8,7 @@
+ }
+ int cp_acquire(Pool *p, unsigned int now) {
+     for(int i=0;i<CPMAX;i++){
+-        if(!p->c[i].in_use){p->c[i].in_use=1; return i;}
++        if(!p->c[i].in_use){p->c[i].in_use=1; p->c[i].acquired_at=now; return i;}
+     }
+     return -1;
+ }

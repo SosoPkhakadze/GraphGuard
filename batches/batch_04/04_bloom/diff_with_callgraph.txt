@@ -1,0 +1,25 @@
+=== DIFF ===
+diff --git a/src/bloom.c b/src/bloom.c
+index abc1234..def5678 100644
+--- a/src/bloom.c
++++ b/src/bloom.c
+@@ -11,7 +11,7 @@
+ }
+ int bf_check(Bloom *b, const char *s) {
+     unsigned h1=bfh1(s),h2=bfh2(s);
+-    return (b->bits[h1/8]>>(h1%8)&1) | (b->bits[h2/8]>>(h2%8)&1);
++    return (b->bits[h1/8]>>(h1%8)&1) && (b->bits[h2/8]>>(h2%8)&1);
+ }
+ int main(void) {
+     Bloom b; bf_init(&b); bf_add(&b,"hello");
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  bf_add -> [bfh1, bfh2]
+  bf_check * -> [bfh1, bfh2]
+  bf_init -> [-]
+  bfh1 -> [-]
+  bfh2 -> [-]
+  main -> [bf_add, bf_check, bf_init]

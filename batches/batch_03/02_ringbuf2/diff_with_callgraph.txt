@@ -1,0 +1,25 @@
+=== DIFF ===
+diff --git a/src/ringbuf.c b/src/ringbuf.c
+index abc1234..def5678 100644
+--- a/src/ringbuf.c
++++ b/src/ringbuf.c
+@@ -14,7 +14,7 @@
+ }
+ int rb_peek(RBuf *b, int *out) {
+     if(b->n<=0) return -1;
+-    *out=b->d[b->w];
++    *out=b->d[b->r];
+     return 0;
+ }
+ int rb_size(RBuf *b) { return b->n; }
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  main -> [rb_init, rb_peek, rb_pop, rb_push, rb_size]
+  rb_init -> [-]
+  rb_peek * -> [-]
+  rb_pop -> [-]
+  rb_push -> [-]
+  rb_size -> [-]

@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "env_get",
+    "env_init",
+    "env_load",
+    "main",
+    "trim_end"
+  ],
+  "changed_functions": [
+    "env_load"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "project": "01_simple_calc",
+  "description": "Single-file integer calculator. Added division-by-zero guard in divide().",
+  "all_functions": ["add", "subtract", "divide", "main"],
+  "changed_functions": ["divide"],
+  "affected_functions": ["main"]
+}

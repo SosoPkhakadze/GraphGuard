@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "main",
+    "sched_add",
+    "sched_done",
+    "sched_init",
+    "sched_next"
+  ],
+  "changed_functions": [
+    "sched_next"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

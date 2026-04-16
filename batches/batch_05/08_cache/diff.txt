@@ -1,0 +1,15 @@
+diff --git a/src/cache.c b/src/cache.c
+index abc1234..def5678 100644
+--- a/src/cache.c
++++ b/src/cache.c
+@@ -7,7 +7,9 @@
+ void cache_put(Cache *c, int k, int v) {
+     for(int i=0;i<CSZ;i++)
+         if(c->e[i].key==k){c->e[i].val=v;c->e[i].age=c->tick++;return;}
+-    c->e[0]=(CE){k,v,c->tick++};
++    int old=0;
++    for(int i=1;i<CSZ;i++) if(c->e[i].age<c->e[old].age) old=i;
++    c->e[old]=(CE){k,v,c->tick++};
+ }
+ int cache_get(Cache *c, int k, int *out) {
+     for(int i=0;i<CSZ;i++)

@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "ap_add",
+    "ap_found",
+    "ap_init",
+    "ap_parse",
+    "main"
+  ],
+  "changed_functions": [
+    "ap_parse"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

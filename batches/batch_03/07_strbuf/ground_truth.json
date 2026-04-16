@@ -1,0 +1,16 @@
+{
+  "all_functions": [
+    "main",
+    "sb_append",
+    "sb_clear",
+    "sb_init",
+    "sb_len",
+    "sb_str"
+  ],
+  "changed_functions": [
+    "sb_append"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

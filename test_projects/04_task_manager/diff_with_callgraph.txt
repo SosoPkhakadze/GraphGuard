@@ -1,0 +1,45 @@
+=== DIFF ===
+diff --git a/src/task.c b/src/task.c
+index 1a2b3c4..5d6e7f8 100644
+--- a/src/task.c
++++ b/src/task.c
+@@ -11,5 +11,7 @@
+ void task_set_priority(Task *t, int priority) {
++    if (priority < 0) priority = 0;
++    if (priority > 10) priority = 10;
+     t->priority = priority;
+ }
+
+ int task_get_priority(const Task *t) {
+diff --git a/src/queue.c b/src/queue.c
+index 2b3c4d5..6e7f8g9 100644
+--- a/src/queue.c
++++ b/src/queue.c
+@@ -8,5 +8,12 @@
+ int queue_push(Queue *q, Task t) {
+     if (q->count >= QUEUE_MAX) return -1;
+     q->items[q->count++] = t;
++    int i = q->count - 1;
++    while (i > 0 && q->items[i].priority > q->items[i-1].priority) {
++        Task tmp = q->items[i];
++        q->items[i] = q->items[i-1];
++        q->items[i-1] = tmp;
++        i--;
++    }
+     return 0;
+ }
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  main -> [queue_init, scheduler_add, scheduler_run]
+  queue_init -> [-]
+  queue_pop -> [-]
+  queue_push * -> [-]
+  queue_size -> [-]
+  scheduler_add -> [queue_push, task_init, task_set_priority]
+  scheduler_run -> [queue_pop]
+  task_get_priority -> [-]
+  task_init -> [-]
+  task_set_priority * -> [-]

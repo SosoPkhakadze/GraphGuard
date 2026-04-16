@@ -1,0 +1,13 @@
+diff --git a/src/trie.c b/src/trie.c
+index abc1234..def5678 100644
+--- a/src/trie.c
++++ b/src/trie.c
+@@ -14,6 +14,8 @@
+         int c=*s-'a';
+         if(t->nodes[cur].ch[c]<0){
+             if(t->n>=TNODES) return -1;
++            memset(t->nodes[t->n].ch,-1,sizeof(t->nodes[t->n].ch));
++            t->nodes[t->n].end=0;
+             t->nodes[cur].ch[c]=t->n++;
+         }
+         cur=t->nodes[cur].ch[c]; s++;

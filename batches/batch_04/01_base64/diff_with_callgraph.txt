@@ -1,0 +1,28 @@
+=== DIFF ===
+diff --git a/src/base64.c b/src/base64.c
+index abc1234..def5678 100644
+--- a/src/base64.c
++++ b/src/base64.c
+@@ -6,10 +6,11 @@
+         unsigned a=in[i++];
+         unsigned b=i<n?in[i++]:0;
+         unsigned c=i<n?in[i++]:0;
+-        out[j++]=B64[a>>2];
++        int rem=n-(i-3);
++        out[j++]=B64[(a>>2)&0x3F];
+         out[j++]=B64[((a&3)<<4)|(b>>4)];
+-        out[j++]=B64[((b&0xF)<<2)|(c>>6)];
+-        out[j++]=B64[c&0x3F];
++        out[j++]=rem>=2 ? B64[((b&0xF)<<2)|(c>>6)] : '=';
++        out[j++]=rem>=3 ? B64[c&0x3F] : '=';
+         if(j+4>sz) return -1;
+     }
+     out[j]='\0'; return j;
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  b64_encode * -> [-]
+  b64_len -> [-]
+  main -> [b64_encode]

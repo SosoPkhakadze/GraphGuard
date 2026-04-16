@@ -1,0 +1,7 @@
+{
+  "project": "03_linked_list",
+  "description": "Multi-file linked list. Fixed list_pop() missing size decrement and added null guard in list_size().",
+  "all_functions": ["list_push", "list_pop", "list_size", "main"],
+  "changed_functions": ["list_pop", "list_size"],
+  "affected_functions": ["main"]
+}

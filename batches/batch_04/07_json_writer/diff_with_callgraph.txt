@@ -1,0 +1,30 @@
+=== DIFF ===
+diff --git a/src/jsonw.c b/src/jsonw.c
+index abc1234..def5678 100644
+--- a/src/jsonw.c
++++ b/src/jsonw.c
+@@ -11,7 +11,12 @@
+ }
+ int jw_string(JW *w, const char *s) {
+     jw_raw(w,"\"");
+-    while(*s){ char c[2]={*s,0}; jw_raw(w,c); s++; }
++    while(*s){
++        if(*s=='"') jw_raw(w,"\\"");
++        else if(*s=='\\') jw_raw(w,"\\\\");
++        else { char c[2]={*s,0}; jw_raw(w,c); }
++        s++;
++    }
+     return jw_raw(w,"\"");
+ }
+ int jw_int(JW *w, int v) { char t[32]; sprintf(t,"%d",v); return jw_raw(w,t); }
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  jw_get -> [-]
+  jw_init -> [-]
+  jw_int -> [jw_raw]
+  jw_raw -> [-]
+  jw_string * -> [jw_raw]
+  main -> [jw_get, jw_init, jw_raw, jw_string]

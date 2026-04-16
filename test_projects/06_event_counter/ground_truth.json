@@ -1,0 +1,5 @@
+{
+  "all_functions": ["event_fire", "event_get_count", "event_reset", "main"],
+  "changed_functions": ["event_reset"],
+  "affected_functions": ["main"]
+}

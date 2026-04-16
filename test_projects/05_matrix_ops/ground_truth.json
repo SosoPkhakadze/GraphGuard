@@ -1,0 +1,10 @@
+{
+  "project": "05_matrix_ops",
+  "description": "Multi-file matrix library. Added out-of-bounds guard in matrix_get() and matrix_set().",
+  "all_functions": [
+    "matrix_init", "matrix_get", "matrix_set", "matrix_zero",
+    "matrix_add", "matrix_scale", "matrix_transpose", "main"
+  ],
+  "changed_functions": ["matrix_get", "matrix_set"],
+  "affected_functions": ["matrix_zero", "matrix_add", "matrix_scale", "matrix_transpose", "main"]
+}

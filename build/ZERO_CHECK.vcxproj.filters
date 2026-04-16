@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ASUS_ZEPHYRUS\Desktop\GraphGuard\build\CMakeFiles\7c875adc8937034c7b1625b58bd461a5\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{C790480C-D4B9-3822-80D9-0AF8DD7B47A5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

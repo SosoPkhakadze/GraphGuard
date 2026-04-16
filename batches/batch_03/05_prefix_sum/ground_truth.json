@@ -1,0 +1,16 @@
+{
+  "all_functions": [
+    "main",
+    "prefix_build",
+    "prefix_query",
+    "prefix_total"
+  ],
+  "changed_functions": [
+    "prefix_build"
+  ],
+  "affected_functions": [
+    "main",
+    "prefix_query",
+    "prefix_total"
+  ]
+}

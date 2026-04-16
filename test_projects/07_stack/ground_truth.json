@@ -1,0 +1,5 @@
+{
+  "all_functions": ["main", "stack_empty", "stack_init", "stack_peek", "stack_pop", "stack_push"],
+  "changed_functions": ["stack_peek", "stack_pop"],
+  "affected_functions": ["main"]
+}

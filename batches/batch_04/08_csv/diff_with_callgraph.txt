@@ -1,0 +1,35 @@
+=== DIFF ===
+diff --git a/src/csv.c b/src/csv.c
+index abc1234..def5678 100644
+--- a/src/csv.c
++++ b/src/csv.c
+@@ -5,9 +5,18 @@
+ int csv_next(CSV *c, char *out, int sz) {
+     if(!c->src[c->pos]) return 0;
+     int j=0;
+-    while(c->src[c->pos]&&c->src[c->pos]!=','){
+-        if(j<sz-1) out[j++]=c->src[c->pos];
++    if(c->src[c->pos]=='"'){
+         c->pos++;
++        while(c->src[c->pos]&&c->src[c->pos]!='"'){
++            if(j<sz-1) out[j++]=c->src[c->pos];
++            c->pos++;
++        }
++        if(c->src[c->pos]=='"') c->pos++;
++    } else {
++        while(c->src[c->pos]&&c->src[c->pos]!=','){
++            if(j<sz-1) out[j++]=c->src[c->pos];
++            c->pos++;
++        }
+     }
+     if(c->src[c->pos]==',') c->pos++;
+     out[j]='\0'; return 1;
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  csv_count -> [csv_init, csv_next]
+  csv_init -> [-]
+  csv_next * -> [-]
+  main -> [csv_init, csv_next]

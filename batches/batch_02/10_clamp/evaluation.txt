@@ -1,0 +1,30 @@
+========================================================================
+Project : 10_clamp
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['clamp']
+  Affected : ['lerp', 'main', 'normalize']
+  All fns  : ['clamp', 'lerp', 'main', 'normalize']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['clamp']
+  Predicted affected : ['normalize']
+  Concerns : The clamp function now correctly handles values greater than the upper bound, which may affect any logic relying on previous behavior.
+  TP=2  TN=0  FP=0  FN=2  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.500
+  Missed       : ['lerp', 'main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['clamp']
+  Predicted affected : ['lerp', 'main', 'normalize']
+  Concerns : The change in clamp may affect any logic relying on its boundary conditions.
+  TP=4  TN=0  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000
+========================================================================

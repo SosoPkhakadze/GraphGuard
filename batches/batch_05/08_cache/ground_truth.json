@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "cache_get",
+    "cache_init",
+    "cache_put",
+    "cache_stale",
+    "main"
+  ],
+  "changed_functions": [
+    "cache_put"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

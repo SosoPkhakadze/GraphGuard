@@ -1,0 +1,32 @@
+========================================================================
+Project : 04_task_manager
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['queue_push', 'task_set_priority']
+  Affected : ['main', 'scheduler_add']
+  All fns  : ['main', 'queue_init', 'queue_pop', 'queue_push', 'queue_size', 'scheduler_add', 'scheduler_run', 'task_get_priority', 'task_init', 'task_set_priority']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['queue_push', 'task_set_priority']
+  Predicted affected : ['any function using queue_push or task_set_priority', 'task_get_priority']
+  Concerns : Priority bounds and queue ordering logic may affect task scheduling and processing.
+  TP=2  TN=5  FP=1  FN=2  Prec=0.667  Rec=0.500  F1=0.571  Acc=0.700
+  False alarms : ['task_get_priority']
+  Missed       : ['main', 'scheduler_add']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['queue_push', 'task_set_priority']
+  Predicted affected : ['scheduler_add']
+  Concerns : Changes may affect task priority handling and queue ordering.
+  TP=3  TN=6  FP=0  FN=1  Prec=1.000  Rec=0.750  F1=0.857  Acc=0.900
+  Missed       : ['main']
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.571    Friend 2 F1 = 0.857
+========================================================================

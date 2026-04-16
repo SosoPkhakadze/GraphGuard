@@ -1,0 +1,31 @@
+=== DIFF ===
+diff --git a/src/stack.c b/src/stack.c
+index abc1234..def5678 100644
+--- a/src/stack.c
++++ b/src/stack.c
+@@ -13,7 +13,7 @@ int stack_push(Stack *s, int val) {
+ int stack_pop(Stack *s, int *out) {
+     if (s->top < 0) return -1;
+-    *out = s->items[--s->top];
++    *out = s->items[s->top--];
+     return 0;
+ }
+
+@@ -19,7 +19,7 @@ int stack_pop(Stack *s, int *out) {
+ int stack_peek(Stack *s, int *out) {
+     if (s->top < 0) return -1;
+-    *out = s->items[s->top - 1];
++    *out = s->items[s->top];
+     return 0;
+ }
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  main -> [stack_init, stack_peek, stack_pop, stack_push]
+  stack_empty -> [-]
+  stack_init -> [-]
+  stack_peek * -> [-]
+  stack_pop * -> [-]
+  stack_push -> [-]

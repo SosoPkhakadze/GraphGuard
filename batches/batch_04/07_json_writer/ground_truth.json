@@ -1,0 +1,16 @@
+{
+  "all_functions": [
+    "jw_get",
+    "jw_init",
+    "jw_int",
+    "jw_raw",
+    "jw_string",
+    "main"
+  ],
+  "changed_functions": [
+    "jw_string"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

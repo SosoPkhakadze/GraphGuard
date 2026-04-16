@@ -1,0 +1,14 @@
+{
+  "all_functions": [
+    "main",
+    "tok_has_more",
+    "tok_init",
+    "tok_next"
+  ],
+  "changed_functions": [
+    "tok_next"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

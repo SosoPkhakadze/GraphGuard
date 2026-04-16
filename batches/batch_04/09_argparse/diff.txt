@@ -1,0 +1,12 @@
+diff --git a/src/argparse.c b/src/argparse.c
+index abc1234..def5678 100644
+--- a/src/argparse.c
++++ b/src/argparse.c
+@@ -13,6 +13,7 @@
+     for(int i=1;i<argc;i++){
+         if(argv[i][0]!='-') continue;
+         const char *flag=argv[i]+1;
++        if(flag[0]=='-') flag++;
+         for(int j=0;j<p->n;j++)
+             if(strcmp(p->args[j].name,flag)==0) p->args[j].found=1;
+     }

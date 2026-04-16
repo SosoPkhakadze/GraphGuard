@@ -1,0 +1,23 @@
+=== DIFF ===
+diff --git a/src/debounce.c b/src/debounce.c
+index abc1234..def5678 100644
+--- a/src/debounce.c
++++ b/src/debounce.c
+@@ -3,7 +3,7 @@
+ void db_init(Debounce *d, unsigned int delay) { d->state=0; d->last_time=0; d->delay=delay; }
+ int db_update(Debounce *d, int state, unsigned int now) {
+     if(state != d->state){
+-        if(now - d->last_time > d->delay){
++        if(now - d->last_time >= d->delay){
+             d->state=state; d->last_time=now; return 1;
+         }
+     }
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  db_init -> [-]
+  db_state -> [-]
+  db_update * -> [-]
+  main -> [db_init, db_state, db_update]

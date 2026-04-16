@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "main",
+    "timer_duration",
+    "timer_elapsed",
+    "timer_start",
+    "timer_stop"
+  ],
+  "changed_functions": [
+    "timer_elapsed"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

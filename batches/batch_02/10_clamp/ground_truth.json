@@ -1,0 +1,16 @@
+{
+  "all_functions": [
+    "clamp",
+    "lerp",
+    "main",
+    "normalize"
+  ],
+  "changed_functions": [
+    "clamp"
+  ],
+  "affected_functions": [
+    "lerp",
+    "main",
+    "normalize"
+  ]
+}

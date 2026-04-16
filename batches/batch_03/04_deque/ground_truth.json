@@ -1,0 +1,16 @@
+{
+  "all_functions": [
+    "dq_front",
+    "dq_init",
+    "dq_pop_front",
+    "dq_push_back",
+    "dq_size",
+    "main"
+  ],
+  "changed_functions": [
+    "dq_pop_front"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

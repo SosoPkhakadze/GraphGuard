@@ -1,0 +1,14 @@
+{
+  "all_functions": [
+    "ini_get",
+    "ini_init",
+    "ini_load",
+    "main"
+  ],
+  "changed_functions": [
+    "ini_load"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

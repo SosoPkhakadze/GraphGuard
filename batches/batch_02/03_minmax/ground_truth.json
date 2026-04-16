@@ -1,0 +1,16 @@
+{
+  "all_functions": [
+    "find_max",
+    "find_min",
+    "main",
+    "range"
+  ],
+  "changed_functions": [
+    "find_max",
+    "find_min"
+  ],
+  "affected_functions": [
+    "main",
+    "range"
+  ]
+}

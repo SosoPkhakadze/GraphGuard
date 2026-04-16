@@ -1,0 +1,5 @@
+{
+  "all_functions": ["config_get", "config_has", "config_init", "config_set", "main", "parse_file", "parse_line"],
+  "changed_functions": ["config_get"],
+  "affected_functions": ["config_has", "main"]
+}

@@ -1,0 +1,16 @@
+{
+  "all_functions": [
+    "lb_add",
+    "lb_drain",
+    "lb_init",
+    "lb_level",
+    "main"
+  ],
+  "changed_functions": [
+    "lb_drain"
+  ],
+  "affected_functions": [
+    "lb_add",
+    "main"
+  ]
+}

@@ -1,0 +1,25 @@
+=== DIFF ===
+diff --git a/src/pubsub.c b/src/pubsub.c
+index abc1234..def5678 100644
+--- a/src/pubsub.c
++++ b/src/pubsub.c
+@@ -14,7 +14,7 @@
+ }
+ int ps_pub(PS *p, const char *t, const char *msg) {
+     for(int i=0;i<p->n;i++)
+-        if(p->s[i].topic==t){ p->s[i].h[0](t,msg); return 1; }
++        if(p->s[i].topic==t){ for(int j=0;j<p->s[i].n;j++) p->s[i].h[j](t,msg); return p->s[i].n; }
+     return 0;
+ }
+ int ps_count(PS *p, const char *t) {
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  main -> [ps_count, ps_init, ps_pub, ps_sub]
+  on_msg -> [-]
+  ps_count -> [-]
+  ps_init -> [-]
+  ps_pub * -> [-]
+  ps_sub -> [-]

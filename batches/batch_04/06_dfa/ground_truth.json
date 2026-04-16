@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "dfa_accepts",
+    "dfa_init",
+    "dfa_run",
+    "dfa_set",
+    "main"
+  ],
+  "changed_functions": [
+    "dfa_set"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

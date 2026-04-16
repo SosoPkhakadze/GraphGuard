@@ -1,0 +1,31 @@
+========================================================================
+Project : 06_event_counter
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['event_reset']
+  Affected : ['main']
+  All fns  : ['event_fire', 'event_get_count', 'event_reset', 'main']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['event_reset']
+  Predicted affected : ['event_fire']
+  Concerns : Resetting event_count to 0 may affect any logic relying on its previous value.
+  TP=1  TN=1  FP=1  FN=1  Prec=0.500  Rec=0.500  F1=0.500  Acc=0.500
+  False alarms : ['event_fire']
+  Missed       : ['main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['event_reset']
+  Predicted affected : ['main']
+  Concerns : Ensure event_count is properly initialized and used.
+  TP=2  TN=2  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.500    Friend 2 F1 = 1.000
+========================================================================

@@ -1,0 +1,12 @@
+diff --git a/src/ini.c b/src/ini.c
+index abc1234..def5678 100644
+--- a/src/ini.c
++++ b/src/ini.c
+@@ -8,6 +8,7 @@
+     if(line[0]=='['){
+         int end=strcspn(line+1,"]");
+         strncpy(cur_sec,line+1,end);
++        cur_sec[end]='\0';
+         return 0;
+     }
+     const char *eq=strchr(line,'=');

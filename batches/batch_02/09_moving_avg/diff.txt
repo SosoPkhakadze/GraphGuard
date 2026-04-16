@@ -1,0 +1,13 @@
+diff --git a/src/moving_avg.c b/src/moving_avg.c
+index abc1234..def5678 100644
+--- a/src/moving_avg.c
++++ b/src/moving_avg.c
+@@ -3,7 +3,7 @@
+ typedef struct { double buf[WIN]; int pos; int count; double sum; } MovAvg;
+ void ma_init(MovAvg *m) { m->pos=0; m->count=0; m->sum=0; }
+ void ma_add(MovAvg *m, double v) {
+-    m->sum -= m->buf[m->pos];
++    if (m->count == WIN) m->sum -= m->buf[m->pos];
+     m->buf[m->pos] = v;
+     m->sum += v;
+     m->pos = (m->pos+1)%WIN;

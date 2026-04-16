@@ -1,0 +1,13 @@
+diff --git a/src/retry.c b/src/retry.c
+index abc1234..def5678 100644
+--- a/src/retry.c
++++ b/src/retry.c
+@@ -3,7 +3,7 @@
+ int retry_run(Fn fn, void *ctx, int max, unsigned int delay) {
+     for(int i=0;i<max;i++){
+         if(fn(ctx)==0) return 0;
+-        if(i<max-1){ unsigned int w=delay*i; (void)w; }
++        if(i<max-1){ unsigned int w=delay<<i; (void)w; }
+     }
+     return -1;
+ }

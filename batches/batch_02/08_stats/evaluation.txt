@@ -1,0 +1,30 @@
+========================================================================
+Project : 08_stats
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['variance']
+  Affected : ['main', 'stddev']
+  All fns  : ['main', 'mean', 'stddev', 'variance']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['variance']
+  Predicted affected : ['stddev']
+  Concerns : The change in variance calculation may affect statistical results, potentially altering the behavior of functions relying on it.
+  TP=2  TN=1  FP=0  FN=1  Prec=1.000  Rec=0.667  F1=0.800  Acc=0.750
+  Missed       : ['main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['variance']
+  Predicted affected : ['main', 'stddev']
+  Concerns : The change in variance calculation may affect statistical results.
+  TP=3  TN=1  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.800    Friend 2 F1 = 1.000
+========================================================================

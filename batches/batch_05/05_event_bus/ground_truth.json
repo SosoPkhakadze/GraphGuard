@@ -1,0 +1,16 @@
+{
+  "all_functions": [
+    "eb_count",
+    "eb_emit",
+    "eb_init",
+    "eb_sub",
+    "main",
+    "on_ev"
+  ],
+  "changed_functions": [
+    "eb_emit"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

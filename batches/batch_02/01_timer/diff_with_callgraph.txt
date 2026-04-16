@@ -1,0 +1,23 @@
+=== DIFF ===
+diff --git a/src/timer.c b/src/timer.c
+index abc1234..def5678 100644
+--- a/src/timer.c
++++ b/src/timer.c
+@@ -3,6 +3,7 @@
+ typedef struct { uint start; uint end; } Timer;
+ void timer_start(Timer *t, uint now) { t->start = now; }
+ uint timer_elapsed(Timer *t, uint now) {
++    if (now < t->start) return 0;
+     return now - t->start;
+ }
+ void timer_stop(Timer *t, uint now) { t->end = now; }
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  main -> [timer_duration, timer_elapsed, timer_start, timer_stop]
+  timer_duration -> [-]
+  timer_elapsed * -> [-]
+  timer_start -> [-]
+  timer_stop -> [-]

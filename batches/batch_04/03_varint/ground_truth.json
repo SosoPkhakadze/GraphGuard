@@ -1,0 +1,14 @@
+{
+  "all_functions": [
+    "main",
+    "varint_decode",
+    "varint_encode",
+    "varint_size"
+  ],
+  "changed_functions": [
+    "varint_encode"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

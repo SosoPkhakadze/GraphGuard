@@ -1,0 +1,12 @@
+diff --git a/src/tokenizer.c b/src/tokenizer.c
+index abc1234..def5678 100644
+--- a/src/tokenizer.c
++++ b/src/tokenizer.c
+@@ -10,6 +10,7 @@
+     int n = t->pos - start;
+     if (n >= sz) n = sz - 1;
+     memcpy(out, t->src + start, n);
++    out[n] = '\0';
+     return n;
+ }
+ int tok_has_more(Tok *t) { return t->pos < t->len; }

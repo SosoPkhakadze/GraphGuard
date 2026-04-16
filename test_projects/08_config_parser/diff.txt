@@ -1,0 +1,14 @@
+diff --git a/src/config.c b/src/config.c
+index abc1234..def5678 100644
+--- a/src/config.c
++++ b/src/config.c
+@@ -20,9 +20,9 @@ int config_set(const char *key, const char *value) {
+ const char *config_get(const char *key, const char *def) {
+     for (int i = 0; i < count; i++) {
+         if (strcmp(entries[i].key, key) == 0)
+             return entries[i].value;
+     }
+-    return NULL;
++    return def;
+ }
+

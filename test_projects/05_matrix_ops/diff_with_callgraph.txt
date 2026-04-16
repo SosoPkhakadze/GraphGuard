@@ -1,0 +1,28 @@
+=== DIFF ===
+diff --git a/src/matrix.c b/src/matrix.c
+index 3c4d5e6..7f8g9h0 100644
+--- a/src/matrix.c
++++ b/src/matrix.c
+@@ -8,7 +8,9 @@
+ int matrix_get(const Matrix *m, int r, int c) {
++    if (r < 0 || r >= m->rows || c < 0 || c >= m->cols) return 0;
+     return m->data[r][c];
+ }
+
+ void matrix_set(Matrix *m, int r, int c, int val) {
++    if (r < 0 || r >= m->rows || c < 0 || c >= m->cols) return;
+     m->data[r][c] = val;
+ }
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  main -> [matrix_add, matrix_get, matrix_init, matrix_scale, matrix_set]
+  matrix_add -> [matrix_get, matrix_init, matrix_set]
+  matrix_get * -> [-]
+  matrix_init -> [-]
+  matrix_scale -> [matrix_get, matrix_init, matrix_set]
+  matrix_set * -> [-]
+  matrix_transpose -> [matrix_get, matrix_init, matrix_set]
+  matrix_zero -> [matrix_set]

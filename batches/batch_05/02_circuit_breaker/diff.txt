@@ -1,0 +1,13 @@
+diff --git a/src/circuit.c b/src/circuit.c
+index abc1234..def5678 100644
+--- a/src/circuit.c
++++ b/src/circuit.c
+@@ -4,7 +4,7 @@
+ #define CB_HALF   2
+ typedef struct { int state; int fails; int threshold; } CB;
+ void cb_init(CB *c, int thr) { c->state=CB_CLOSED; c->fails=0; c->threshold=thr; }
+-int cb_allow(CB *c) { return c->state==CB_CLOSED; }
++int cb_allow(CB *c) { return c->state!=CB_OPEN; }
+ void cb_success(CB *c) {
+     c->fails=0;
+     if(c->state==CB_HALF) c->state=CB_CLOSED;

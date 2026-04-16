@@ -1,0 +1,9 @@
+diff --git a/src/event.c b/src/event.c
+index abc1234..def5678 100644
+--- a/src/event.c
++++ b/src/event.c
+@@ -9,4 +9,5 @@ void event_fire() {
+ void event_reset() {
++    event_count = 0;
+ }
+

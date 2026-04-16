@@ -1,0 +1,12 @@
+diff --git a/src/clamp.c b/src/clamp.c
+index abc1234..def5678 100644
+--- a/src/clamp.c
++++ b/src/clamp.c
+@@ -1,6 +1,7 @@
+ #include <stdio.h>
+ double clamp(double v, double lo, double hi) {
+     if (v < lo) return lo;
++    if (v > hi) return hi;
+     return v;
+ }
+ double normalize(double v, double lo, double hi) {

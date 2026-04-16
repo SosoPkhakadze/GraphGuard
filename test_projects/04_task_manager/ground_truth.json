@@ -1,0 +1,11 @@
+{
+  "project": "04_task_manager",
+  "description": "Multi-file task scheduler. queue_push() now sorts by priority on insert; task_set_priority() now clamps the value to [0,10].",
+  "all_functions": [
+    "task_init", "task_set_priority", "task_get_priority",
+    "queue_init", "queue_push", "queue_pop", "queue_size",
+    "scheduler_run", "scheduler_add", "main"
+  ],
+  "changed_functions": ["task_set_priority", "queue_push"],
+  "affected_functions": ["scheduler_add", "main"]
+}

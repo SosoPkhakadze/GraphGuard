@@ -1,0 +1,24 @@
+=== DIFF ===
+diff --git a/src/counter.c b/src/counter.c
+index abc1234..def5678 100644
+--- a/src/counter.c
++++ b/src/counter.c
+@@ -3,6 +3,7 @@
+ void counter_init(Counter *c, int mn, int mx) { c->val=0; c->min=mn; c->max=mx; }
+ void counter_inc(Counter *c) { if (c->val < c->max) c->val++; }
+ void counter_dec(Counter *c) {
++    if (c->val <= c->min) return;
+     c->val--;
+ }
+ int counter_get(Counter *c) { return c->val; }
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  counter_dec * -> [-]
+  counter_get -> [-]
+  counter_inc -> [-]
+  counter_init -> [-]
+  counter_reset -> [-]
+  main -> [counter_dec, counter_get, counter_inc, counter_init]

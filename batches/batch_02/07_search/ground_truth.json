@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "count_occur",
+    "find_char",
+    "find_substr",
+    "main"
+  ],
+  "changed_functions": [
+    "find_substr"
+  ],
+  "affected_functions": [
+    "count_occur",
+    "main"
+  ]
+}

@@ -1,0 +1,31 @@
+========================================================================
+Project : 03_leaky_bucket
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['lb_drain']
+  Affected : ['lb_add', 'main']
+  All fns  : ['lb_add', 'lb_drain', 'lb_init', 'lb_level', 'main']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['lb_drain']
+  Predicted affected : []
+  Concerns : The change in lb_drain may cause the level to decrease more rapidly, potentially affecting rate-limiting behavior.
+  TP=1  TN=2  FP=0  FN=2  Prec=1.000  Rec=0.333  F1=0.500  Acc=0.600
+  Missed       : ['lb_add', 'main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['lb_drain']
+  Predicted affected : ['lb_add']
+  Concerns : The change in lb_drain may affect how lb_add behaves due to the new drain calculation.
+  TP=2  TN=2  FP=0  FN=1  Prec=1.000  Rec=0.667  F1=0.800  Acc=0.800
+  Missed       : ['main']
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.500    Friend 2 F1 = 0.800
+========================================================================

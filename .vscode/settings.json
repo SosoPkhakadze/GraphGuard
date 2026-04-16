@@ -1,0 +1,7 @@
+// .vscode/settings.json
+
+{
+    "python.analysis.extraPaths": [
+        "C:/Users/ASUS_ZEPHYRUS/AppData/Local/Programs/Python/Python312/Lib/site-packages"
+    ]
+}

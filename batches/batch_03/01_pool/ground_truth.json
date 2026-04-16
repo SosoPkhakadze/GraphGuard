@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "main",
+    "pool_alloc",
+    "pool_init",
+    "pool_reset",
+    "pool_used"
+  ],
+  "changed_functions": [
+    "pool_alloc"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

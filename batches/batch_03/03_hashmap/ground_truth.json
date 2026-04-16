@@ -1,0 +1,17 @@
+{
+  "all_functions": [
+    "hm_contains",
+    "hm_get",
+    "hm_hash",
+    "hm_init",
+    "hm_set",
+    "main"
+  ],
+  "changed_functions": [
+    "hm_get"
+  ],
+  "affected_functions": [
+    "hm_contains",
+    "main"
+  ]
+}

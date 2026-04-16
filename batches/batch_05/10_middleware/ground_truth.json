@@ -1,0 +1,17 @@
+{
+  "all_functions": [
+    "dbl",
+    "inc",
+    "main",
+    "mw_count",
+    "mw_init",
+    "mw_run",
+    "mw_use"
+  ],
+  "changed_functions": [
+    "mw_run"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

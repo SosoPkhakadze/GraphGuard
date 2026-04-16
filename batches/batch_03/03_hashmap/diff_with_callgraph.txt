@@ -1,0 +1,24 @@
+=== DIFF ===
+diff --git a/src/hashmap.c b/src/hashmap.c
+index abc1234..def5678 100644
+--- a/src/hashmap.c
++++ b/src/hashmap.c
+@@ -22,6 +22,7 @@
+     int i=hm_hash(k);
+     for(int j=0;j<HSZ;j++){
+         int idx=(i+j)%HSZ;
++        if(!h->e[idx].used) break;
+         if(strcmp(h->e[idx].k,k)==0){*out=h->e[idx].v; return 0;}
+     }
+     return -1;
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  hm_contains -> [hm_get]
+  hm_get * -> [hm_hash]
+  hm_hash -> [-]
+  hm_init -> [-]
+  hm_set -> [hm_hash]
+  main -> [hm_contains, hm_get, hm_init, hm_set]

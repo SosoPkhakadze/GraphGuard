@@ -1,0 +1,14 @@
+{
+  "all_functions": [
+    "crc8",
+    "main",
+    "verify"
+  ],
+  "changed_functions": [
+    "crc8"
+  ],
+  "affected_functions": [
+    "main",
+    "verify"
+  ]
+}

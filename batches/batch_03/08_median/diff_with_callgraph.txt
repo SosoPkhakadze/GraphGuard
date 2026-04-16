@@ -1,0 +1,24 @@
+=== DIFF ===
+diff --git a/src/median.c b/src/median.c
+index abc1234..def5678 100644
+--- a/src/median.c
++++ b/src/median.c
+@@ -2,7 +2,7 @@
+ static void swap2(int *a,int *b){int t=*a;*a=*b;*b=t;}
+ static int partition2(int *a,int lo,int hi){
+     int piv=a[hi],i=lo;
+-    for(int j=lo;j<hi;j++) if(a[j]<piv){swap2(&a[i],&a[j]);i++;}
++    for(int j=lo;j<hi;j++) if(a[j]<=piv){swap2(&a[i],&a[j]);i++;}
+     swap2(&a[i],&a[hi]); return i;
+ }
+ static int qsel(int *a,int lo,int hi,int k){
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  main -> [median]
+  median -> [qsel]
+  partition2 * -> [swap2]
+  qsel -> [partition2, qsel]
+  swap2 -> [-]

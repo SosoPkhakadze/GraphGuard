@@ -1,0 +1,31 @@
+========================================================================
+Project : 05_trie
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['trie_insert']
+  Affected : ['main', 'trie_search']
+  All fns  : ['main', 'trie_init', 'trie_insert', 'trie_search']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['trie_insert']
+  Predicted affected : ['trie_delete', 'trie_search']
+  Concerns : The initialization of new trie nodes may affect node creation logic and subsequent operations.
+  TP=2  TN=1  FP=0  FN=1  Prec=1.000  Rec=0.667  F1=0.800  Acc=0.750
+  Missed       : ['main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['trie_insert']
+  Predicted affected : ['main']
+  Concerns : The change initializes new trie nodes, which may affect memory usage and initialization logic.
+  TP=2  TN=1  FP=0  FN=1  Prec=1.000  Rec=0.667  F1=0.800  Acc=0.750
+  Missed       : ['trie_search']
+
+========================================================================
+WINNER : Tie
+  Friend 1 F1 = 0.800    Friend 2 F1 = 0.800
+========================================================================

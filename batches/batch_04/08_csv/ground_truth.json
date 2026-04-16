@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "csv_count",
+    "csv_init",
+    "csv_next",
+    "main"
+  ],
+  "changed_functions": [
+    "csv_next"
+  ],
+  "affected_functions": [
+    "csv_count",
+    "main"
+  ]
+}

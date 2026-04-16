@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "main",
+    "mean",
+    "stddev",
+    "variance"
+  ],
+  "changed_functions": [
+    "variance"
+  ],
+  "affected_functions": [
+    "main",
+    "stddev"
+  ]
+}

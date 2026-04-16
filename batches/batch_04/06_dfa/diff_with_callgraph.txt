@@ -1,0 +1,23 @@
+=== DIFF ===
+diff --git a/src/dfa.c b/src/dfa.c
+index abc1234..def5678 100644
+--- a/src/dfa.c
++++ b/src/dfa.c
+@@ -7,6 +7,7 @@
+     for(int i=0;i<ST;i++){d->acc[i]=0;for(int j=0;j<AL;j++)d->tr[i][j]=-1;}
+ }
+ void dfa_set(DFA *d, int from, int sym, int to) {
++    if(from<0||from>=ST||sym<0||sym>=AL) return;
+     d->tr[from][sym]=to;
+ }
+ int dfa_run(DFA *d, const int *inp, int n) {
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  dfa_accepts -> [dfa_run]
+  dfa_init -> [-]
+  dfa_run -> [-]
+  dfa_set * -> [-]
+  main -> [dfa_accepts, dfa_init, dfa_set]

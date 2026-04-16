@@ -1,0 +1,24 @@
+=== DIFF ===
+diff --git a/src/varint.c b/src/varint.c
+index abc1234..def5678 100644
+--- a/src/varint.c
++++ b/src/varint.c
+@@ -3,7 +3,8 @@
+     int i=0;
+     do {
+         if(i>=sz) return -1;
+-        out[i] = (v&0x7F)|0x80;
++        out[i] = v&0x7F;
++        if(v>>7) out[i]|=0x80;
+         v>>=7; i++;
+     } while(v);
+     return i;
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  main -> [varint_decode, varint_encode]
+  varint_decode -> [-]
+  varint_encode * -> [-]
+  varint_size -> [-]

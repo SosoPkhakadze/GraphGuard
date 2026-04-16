@@ -1,0 +1,23 @@
+=== DIFF ===
+diff --git a/src/utf8.c b/src/utf8.c
+index abc1234..def5678 100644
+--- a/src/utf8.c
++++ b/src/utf8.c
+@@ -11,7 +11,7 @@
+     while(*s){
+         int len=utf8_charlen((unsigned char)*s);
+         if(len<0) return -1;
+-        s++;
++        s+=len;
+         count++;
+     }
+     return count;
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  main -> [utf8_strlen, utf8_valid]
+  utf8_charlen -> [-]
+  utf8_strlen * -> [utf8_charlen]
+  utf8_valid -> [utf8_charlen]

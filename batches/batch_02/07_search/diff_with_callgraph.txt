@@ -1,0 +1,23 @@
+=== DIFF ===
+diff --git a/src/search.c b/src/search.c
+index abc1234..def5678 100644
+--- a/src/search.c
++++ b/src/search.c
+@@ -6,7 +6,7 @@
+ }
+ int find_substr(const char *hay, const char *needle) {
+     int hn=strlen(hay), nn=strlen(needle);
+-    for (int i=0; i < hn-nn; i++)
++    for (int i=0; i <= hn-nn; i++)
+         if (memcmp(hay+i, needle, nn)==0) return i;
+     return -1;
+ }
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  count_occur -> [find_substr]
+  find_char -> [-]
+  find_substr * -> [-]
+  main -> [count_occur, find_substr]

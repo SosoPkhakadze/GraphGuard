@@ -1,0 +1,24 @@
+=== DIFF ===
+diff --git a/src/leaky.c b/src/leaky.c
+index abc1234..def5678 100644
+--- a/src/leaky.c
++++ b/src/leaky.c
+@@ -4,6 +4,8 @@
+ void lb_init(LB *b, int rate) { b->level=0; b->rate=rate; b->last=0; }
+ static void lb_drain(LB *b, unsigned int now) {
+     unsigned int elapsed=now-b->last;
++    int drain=(int)elapsed*b->rate;
++    b->level-=drain;
+     b->last=now;
+     if(b->level<0) b->level=0;
+ }
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  lb_add -> [lb_drain]
+  lb_drain * -> [-]
+  lb_init -> [-]
+  lb_level -> [-]
+  main -> [lb_add, lb_init, lb_level]

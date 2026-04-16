@@ -1,0 +1,15 @@
+diff --git a/src/list.c b/src/list.c
+index 2a3b4c5..6d7e8f9 100644
+--- a/src/list.c
++++ b/src/list.c
+@@ -17,7 +17,9 @@
+     free(old);
++    l->size--;
+     return val;
+ }
+
+ int list_size(const List *l) {
+-    return l->size;
++    if (!l) return 0;
++    return l->size;
+ }

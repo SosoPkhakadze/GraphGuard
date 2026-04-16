@@ -1,0 +1,16 @@
+{
+  "all_functions": [
+    "bf_add",
+    "bf_check",
+    "bf_init",
+    "bfh1",
+    "bfh2",
+    "main"
+  ],
+  "changed_functions": [
+    "bf_check"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

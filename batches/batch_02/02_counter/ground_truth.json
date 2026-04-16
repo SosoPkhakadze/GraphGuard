@@ -1,0 +1,16 @@
+{
+  "all_functions": [
+    "counter_dec",
+    "counter_get",
+    "counter_inc",
+    "counter_init",
+    "counter_reset",
+    "main"
+  ],
+  "changed_functions": [
+    "counter_dec"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "main",
+    "window_max",
+    "window_min",
+    "window_range"
+  ],
+  "changed_functions": [
+    "window_min"
+  ],
+  "affected_functions": [
+    "main",
+    "window_range"
+  ]
+}

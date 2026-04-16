@@ -1,0 +1,23 @@
+=== DIFF ===
+diff --git a/src/calc.c b/src/calc.c
+index 3f9a1c2..7e4b8d5 100644
+--- a/src/calc.c
++++ b/src/calc.c
+@@ -11,7 +11,10 @@
+ int divide(int a, int b) {
++    if (b == 0) {
++        return 0;
++    }
+     return a / b;
+ }
+
+ int main(void) {
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  add -> [-]
+  divide * -> [-]
+  main -> [add, divide]
+  subtract -> [-]

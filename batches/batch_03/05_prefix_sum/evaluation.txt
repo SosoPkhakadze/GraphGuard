@@ -1,0 +1,31 @@
+========================================================================
+Project : 05_prefix_sum
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['prefix_build']
+  Affected : ['main', 'prefix_query', 'prefix_total']
+  All fns  : ['main', 'prefix_build', 'prefix_query', 'prefix_total']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['prefix_build']
+  Predicted affected : ['prefix_query']
+  Concerns : The change in index calculation in prefix_build may affect prefix sums, potentially causing incorrect results in prefix_query.
+  TP=2  TN=0  FP=0  FN=2  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.500
+  Missed       : ['main', 'prefix_total']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['prefix_build']
+  Predicted affected : ['main']
+  Concerns : The change fixes an off-by-one error in prefix_build which may affect prefix calculations.
+  TP=2  TN=0  FP=0  FN=2  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.500
+  Missed       : ['prefix_query', 'prefix_total']
+
+========================================================================
+WINNER : Tie
+  Friend 1 F1 = 0.667    Friend 2 F1 = 0.667
+========================================================================

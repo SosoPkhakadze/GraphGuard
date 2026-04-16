@@ -1,0 +1,7 @@
+{
+  "project": "02_string_utils",
+  "description": "Single-file string utilities. Fixed off-by-one in str_reverse() and added null guard in str_copy().",
+  "all_functions": ["str_len", "str_reverse", "str_copy", "process_string", "main"],
+  "changed_functions": ["str_reverse", "str_copy"],
+  "affected_functions": ["process_string", "main"]
+}

@@ -1,0 +1,19 @@
+=== DIFF ===
+diff --git a/src/event.c b/src/event.c
+index abc1234..def5678 100644
+--- a/src/event.c
++++ b/src/event.c
+@@ -9,4 +9,5 @@ void event_fire() {
+ void event_reset() {
++    event_count = 0;
+ }
+
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  event_fire -> [-]
+  event_get_count -> [-]
+  event_reset * -> [-]
+  main -> [event_fire, event_get_count, event_reset]

@@ -1,0 +1,24 @@
+=== DIFF ===
+diff --git a/src/logrot.c b/src/logrot.c
+index abc1234..def5678 100644
+--- a/src/logrot.c
++++ b/src/logrot.c
+@@ -3,6 +3,7 @@
+ typedef struct { int size; int max; int rotations; } LR;
+ void lr_init(LR *l, int max) { l->size=0; l->max=max; l->rotations=0; }
+ int lr_write(LR *l, int bytes) {
++    if(bytes<=0) return -1;
+     if(l->size+bytes>l->max){ l->rotations++; l->size=0; }
+     l->size+=bytes; return 0;
+ }
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  lr_init -> [-]
+  lr_remaining -> [-]
+  lr_rotations -> [-]
+  lr_should_rotate -> [-]
+  lr_write * -> [-]
+  main -> [lr_init, lr_remaining, lr_rotations, lr_write]

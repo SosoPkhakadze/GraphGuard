@@ -1,0 +1,25 @@
+=== DIFF ===
+diff --git a/src/strbuf.c b/src/strbuf.c
+index abc1234..def5678 100644
+--- a/src/strbuf.c
++++ b/src/strbuf.c
+@@ -5,7 +5,7 @@
+ void sb_init(StrBuf *s) { s->len=0; s->d[0]='\0'; }
+ int sb_append(StrBuf *s, const char *str) {
+     int n=strlen(str);
+-    if(s->len+n > SB_CAP) return -1;
++    if(s->len+n >= SB_CAP) return -1;
+     memcpy(s->d+s->len, str, n);
+     s->len+=n; s->d[s->len]='\0';
+     return n;
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  main -> [sb_append, sb_init, sb_len, sb_str]
+  sb_append * -> [-]
+  sb_clear -> [-]
+  sb_init -> [-]
+  sb_len -> [-]
+  sb_str -> [-]

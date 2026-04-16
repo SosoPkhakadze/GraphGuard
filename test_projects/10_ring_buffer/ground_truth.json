@@ -1,0 +1,5 @@
+{
+  "all_functions": ["buf_full", "buf_init", "buf_read", "buf_size", "buf_sum", "buf_write", "main"],
+  "changed_functions": ["buf_read", "buf_write"],
+  "affected_functions": ["buf_sum", "main"]
+}

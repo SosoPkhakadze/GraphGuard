@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "always_fail",
+    "always_ok",
+    "main",
+    "retry_count",
+    "retry_run"
+  ],
+  "changed_functions": [
+    "retry_run"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}

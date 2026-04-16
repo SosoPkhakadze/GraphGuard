@@ -1,0 +1,5 @@
+{
+  "all_functions": ["bfs", "graph_add_edge", "graph_has_edge", "graph_has_path", "graph_init", "main"],
+  "changed_functions": ["bfs", "graph_add_edge"],
+  "affected_functions": ["graph_has_path", "main"]
+}

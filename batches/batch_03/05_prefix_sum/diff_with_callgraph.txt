@@ -1,0 +1,23 @@
+=== DIFF ===
+diff --git a/src/prefix.c b/src/prefix.c
+index abc1234..def5678 100644
+--- a/src/prefix.c
++++ b/src/prefix.c
+@@ -3,7 +3,7 @@
+ typedef struct { int p[PMAX+1]; int n; } Prefix;
+ void prefix_build(Prefix *ps, int *arr, int n) {
+     ps->n=n; ps->p[0]=0;
+-    for(int i=0;i<n;i++) ps->p[i]=ps->p[i-1]+arr[i];
++    for(int i=0;i<n;i++) ps->p[i+1]=ps->p[i]+arr[i];
+ }
+ int prefix_query(Prefix *ps, int l, int r) {
+     return ps->p[r+1]-ps->p[l];
+
+=== CALL GRAPH ===
+(format: function -> [functions it calls])
+(functions marked with * were modified in this diff)
+
+  main -> [prefix_build, prefix_query, prefix_total]
+  prefix_build * -> [-]
+  prefix_query -> [-]
+  prefix_total -> [prefix_query]

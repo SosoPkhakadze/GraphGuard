@@ -1,0 +1,30 @@
+========================================================================
+Project : 09_scheduler
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['sched_next']
+  Affected : ['main']
+  All fns  : ['main', 'sched_add', 'sched_done', 'sched_init', 'sched_next']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['select_best_task']
+  Predicted affected : ['execute_task', 'schedule_next_task']
+  Concerns : The change in priority comparison logic may alter task selection behavior.
+  TP=0  TN=3  FP=0  FN=2  Prec=0.000  Rec=0.000  F1=0.000  Acc=0.600
+  Missed       : ['main', 'sched_next']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['sched_next']
+  Predicted affected : ['main']
+  Concerns : The change in priority comparison logic may affect task scheduling behavior.
+  TP=2  TN=3  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.000    Friend 2 F1 = 1.000
+========================================================================

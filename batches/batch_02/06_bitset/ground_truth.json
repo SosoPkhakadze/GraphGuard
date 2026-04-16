@@ -1,0 +1,15 @@
+{
+  "all_functions": [
+    "bs_clear",
+    "bs_count",
+    "bs_set",
+    "bs_test",
+    "main"
+  ],
+  "changed_functions": [
+    "bs_count"
+  ],
+  "affected_functions": [
+    "main"
+  ]
+}
