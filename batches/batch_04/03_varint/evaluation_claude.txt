@@ -1,0 +1,30 @@
+========================================================================
+Project : 03_varint  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['varint_encode']
+  Affected : ['main']
+  All fns  : ['main', 'varint_decode', 'varint_encode', 'varint_size']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['encode_varint']
+  Predicted affected : ['any function that calls encode_varint or processes its output']
+  Concerns : The refactored logic is functionally equivalent — the continuation bit (0x80) is now set conditionally only when more bytes follow, which is actually the correct varint encoding behavior, but if the original code was intentionally always setting 0x80 (e.g., as a sentinel or for a non-standard format), callers decoding that output will now receive different bytes for single-byte values where v>>7 is 0.
+  TP=0  TN=2  FP=0  FN=2  Prec=0.000  Rec=0.000  F1=0.000  Acc=0.500
+  Missed       : ['main', 'varint_encode']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['varint_encode']
+  Predicted affected : ['main']
+  Concerns : The original code unconditionally set the continuation bit (0x80) on every byte including the last, which is a bug; the fix correctly sets it only when more bytes follow, but this is a behavioral change that may affect any decoder expecting the old (broken) encoding.
+  TP=2  TN=2  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.000    Friend 2 F1 = 1.000
+========================================================================

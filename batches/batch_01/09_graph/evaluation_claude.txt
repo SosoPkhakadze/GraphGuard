@@ -1,0 +1,30 @@
+========================================================================
+Project : 09_graph  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['bfs', 'graph_add_edge']
+  Affected : ['graph_has_path', 'main']
+  All fns  : ['bfs', 'graph_add_edge', 'graph_has_edge', 'graph_has_path', 'graph_init', 'main']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['bfs', 'graph_add_edge']
+  Predicted affected : ['any caller of bfs that relied on persistent visited state across calls', 'any caller of graph_add_edge that previously relied on unchecked writes']
+  Concerns : The bounds check in graph_add_edge silently returns -1 on invalid input which callers may not check, and the visited array reset in bfs fixes a latent bug where stale state from prior calls could cause incorrect traversal results.
+  TP=2  TN=2  FP=0  FN=2  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.667
+  Missed       : ['graph_has_path', 'main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['bfs', 'graph_add_edge']
+  Predicted affected : ['graph_has_path', 'main']
+  Concerns : The bounds-checking added to graph_add_edge may silently reject edges that previously would have caused undefined behavior, and the visited array reset in bfs fixes a potential stale-state bug but changes behavior for callers invoking bfs multiple times.
+  TP=4  TN=2  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000
+========================================================================

@@ -1,0 +1,30 @@
+========================================================================
+Project : 08_stats  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['variance']
+  Affected : ['main', 'stddev']
+  All fns  : ['main', 'mean', 'stddev', 'variance']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['variance']
+  Predicted affected : ['stddev']
+  Concerns : Changing the divisor from (n-1) to n switches variance from sample variance (Bessel's correction) to population variance, which will produce systematically smaller variance and stddev values for small samples, silently breaking any statistical calculations expecting unbiased estimates.
+  TP=2  TN=1  FP=0  FN=1  Prec=1.000  Rec=0.667  F1=0.800  Acc=0.750
+  Missed       : ['main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['variance']
+  Predicted affected : ['main', 'stddev']
+  Concerns : Changing the divisor from (n-1) to n switches from sample variance to population variance, silently breaking any callers expecting Bessel's correction for unbiased estimation.
+  TP=3  TN=1  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.800    Friend 2 F1 = 1.000
+========================================================================

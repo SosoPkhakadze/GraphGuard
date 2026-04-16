@@ -1,0 +1,30 @@
+========================================================================
+Project : 01_retry  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['retry_run']
+  Affected : ['main']
+  All fns  : ['always_fail', 'always_ok', 'main', 'retry_count', 'retry_run']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['retry_run']
+  Predicted affected : ['any caller of retry_run']
+  Concerns : The wait variable w is computed but never used (no actual sleep call), so changing from linear to exponential backoff has no observable effect on retry timing, but if a sleep was ever added the behavior would change significantly.
+  TP=1  TN=3  FP=0  FN=1  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.800
+  Missed       : ['main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['retry_run']
+  Predicted affected : ['main']
+  Concerns : The wait calculation changed from linear (delay*i) to exponential (delay<<i), but the computed value w is never actually used for sleeping, so the backoff logic has no real effect regardless of this change.
+  TP=2  TN=3  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000
+========================================================================

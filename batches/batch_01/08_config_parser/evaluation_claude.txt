@@ -1,0 +1,30 @@
+========================================================================
+Project : 08_config_parser  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['config_get']
+  Affected : ['config_has', 'main']
+  All fns  : ['config_get', 'config_has', 'config_init', 'config_set', 'main', 'parse_file', 'parse_line']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['config_get']
+  Predicted affected : ['any function that calls config_get and previously handled a NULL return value for missing keys']
+  Concerns : Callers that explicitly checked for NULL to detect missing keys will no longer distinguish between a missing key and a key set to the default value, potentially masking misconfiguration or causing silent fallback behavior.
+  TP=1  TN=4  FP=0  FN=2  Prec=1.000  Rec=0.333  F1=0.500  Acc=0.714
+  Missed       : ['config_has', 'main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['config_get']
+  Predicted affected : ['config_has', 'main']
+  Concerns : Callers that previously checked for NULL to detect missing keys will now receive the default value instead, potentially masking missing-key conditions if they did not pass a meaningful default.
+  TP=3  TN=4  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.500    Friend 2 F1 = 1.000
+========================================================================

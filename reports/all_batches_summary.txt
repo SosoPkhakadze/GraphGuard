@@ -1,0 +1,81 @@
+========================================================================================
+CROSS-BATCH SUMMARY (GPT-4o)
+========================================================================================
+
+Batch          Project                  | F1 Friend1 F1 Friend2 | Winner                
+----------------------------------------------------------------------------------------
+batch_01       01_simple_calc           |      1.000      1.000 | Tie                   
+batch_01       02_string_utils          |      0.400      1.000 | Friend2               
+batch_01       03_linked_list           |      0.500      1.000 | Friend2               
+batch_01       04_task_manager          |      0.571      0.857 | Friend2               
+batch_01       05_matrix_ops            |      0.444      1.000 | Friend2               
+batch_01       06_event_counter         |      0.500      1.000 | Friend2               
+batch_01       07_stack                 |      0.667      1.000 | Friend2               
+batch_01       08_config_parser         |      0.500      1.000 | Friend2               
+batch_01       09_graph                 |      0.571      1.000 | Friend2               
+batch_01       10_ring_buffer           |      0.667      1.000 | Friend2               
+----------------------------------------------------------------------------------------
+batch_02       01_timer                 |      0.667      1.000 | Friend2               
+batch_02       02_counter               |      0.667      1.000 | Friend2               
+batch_02       03_minmax                |      0.857      1.000 | Friend2               
+batch_02       04_checksum              |      0.000      1.000 | Friend2               
+batch_02       05_tokenizer             |      0.000      1.000 | Friend2               
+batch_02       06_bitset                |      1.000      1.000 | Tie                   
+batch_02       07_search                |      0.500      1.000 | Friend2               
+batch_02       08_stats                 |      0.800      1.000 | Friend2               
+batch_02       09_moving_avg            |      0.667      1.000 | Friend2               
+batch_02       10_clamp                 |      0.667      1.000 | Friend2               
+----------------------------------------------------------------------------------------
+batch_03       01_pool                  |      0.400      1.000 | Friend2               
+batch_03       02_ringbuf2              |      0.667      1.000 | Friend2               
+batch_03       03_hashmap               |      0.000      1.000 | Friend2               
+batch_03       04_deque                 |      0.667      1.000 | Friend2               
+batch_03       05_prefix_sum            |      0.667      0.667 | Tie                   
+batch_03       06_sliding_window        |      0.000      1.000 | Friend2               
+batch_03       07_strbuf                |      0.667      1.000 | Friend2               
+batch_03       08_median                |      0.667      1.000 | Friend2               
+batch_03       09_scheduler             |      0.000      1.000 | Friend2               
+batch_03       10_debounce              |      0.667      1.000 | Friend2               
+----------------------------------------------------------------------------------------
+batch_04       01_base64                |      0.000      1.000 | Friend2               
+batch_04       02_utf8                  |      0.667      1.000 | Friend2               
+batch_04       03_varint                |      0.000      1.000 | Friend2               
+batch_04       04_bloom                 |      0.667      1.000 | Friend2               
+batch_04       05_trie                  |      0.800      0.800 | Tie                   
+batch_04       06_dfa                   |      0.500      1.000 | Friend2               
+batch_04       07_json_writer           |      0.667      1.000 | Friend2               
+batch_04       08_csv                   |      0.500      1.000 | Friend2               
+batch_04       09_argparse              |      0.667      1.000 | Friend2               
+batch_04       10_env                   |      0.000      1.000 | Friend2               
+----------------------------------------------------------------------------------------
+batch_05       01_retry                 |      0.667      1.000 | Friend2               
+batch_05       02_circuit_breaker       |      0.400      1.000 | Friend2               
+batch_05       03_leaky_bucket          |      0.500      0.800 | Friend2               
+batch_05       04_conn_pool             |      0.667      1.000 | Friend2               
+batch_05       05_event_bus             |      0.667      1.000 | Friend2               
+batch_05       06_ini_parser            |      0.000      1.000 | Friend2               
+batch_05       07_log_rotate            |      0.667      1.000 | Friend2               
+batch_05       08_cache                 |      0.500      1.000 | Friend2               
+batch_05       09_pubsub                |      0.667      1.000 | Friend2               
+batch_05       10_middleware            |      0.667      1.000 | Friend2               
+----------------------------------------------------------------------------------------
+
+PER-BATCH AVERAGES
+----------------------------------------------------------------------------------------
+batch_01       n=10   Avg F1 Friend1=0.582  Friend2=0.986  Delta=+0.404
+batch_02       n=10   Avg F1 Friend1=0.583  Friend2=1.000  Delta=+0.417
+batch_03       n=10   Avg F1 Friend1=0.440  Friend2=0.967  Delta=+0.526
+batch_04       n=10   Avg F1 Friend1=0.447  Friend2=0.980  Delta=+0.533
+batch_05       n=10   Avg F1 Friend1=0.540  Friend2=0.980  Delta=+0.440
+----------------------------------------------------------------------------------------
+
+OVERALL  (50 projects across 5 batches)
+----------------------------------------------------------------------------------------
+  Avg F1  Friend 1 (diff only)   : 0.518
+  Avg F1  Friend 2 (diff+graph)  : 0.982
+  Delta  (Friend2 - Friend1)     : +0.464
+
+  Friend2 wins : 46/50  (92.0%)
+  Friend1 wins : 0/50  (0.0%)
+  Ties         : 4/50  (8.0%)
+----------------------------------------------------------------------------------------

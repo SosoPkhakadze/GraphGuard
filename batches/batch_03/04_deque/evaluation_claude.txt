@@ -1,0 +1,30 @@
+========================================================================
+Project : 04_deque  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['dq_pop_front']
+  Affected : ['main']
+  All fns  : ['dq_front', 'dq_init', 'dq_pop_front', 'dq_push_back', 'dq_size', 'main']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['dq_pop_front']
+  Predicted affected : ['any caller of dq_pop_front that relies on correct front-index state, such as dq_push_back, dq_push_front, dq_peek_front, dq_size, or any iteration/traversal logic over the deque']
+  Concerns : The fix corrects a critical wraparound bug where q->front was incremented linearly without modulo, causing out-of-bounds array access when the deque index reached or exceeded DQCAP; all callers should be tested with wraparound scenarios to ensure consistent circular-buffer behavior.
+  TP=1  TN=4  FP=0  FN=1  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.833
+  Missed       : ['main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['dq_pop_front']
+  Predicted affected : ['main']
+  Concerns : The fix correctly wraps the front index using modulo DQCAP, preventing an out-of-bounds array access that would occur when front reaches the end of the circular buffer.
+  TP=2  TN=4  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000
+========================================================================

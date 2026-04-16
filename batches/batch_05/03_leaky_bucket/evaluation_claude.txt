@@ -1,0 +1,30 @@
+========================================================================
+Project : 03_leaky_bucket  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['lb_drain']
+  Affected : ['lb_add', 'main']
+  All fns  : ['lb_add', 'lb_drain', 'lb_init', 'lb_level', 'main']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['lb_drain']
+  Predicted affected : ['any function that calls lb_drain, likely a rate-limiter check or token-add function that uses LB struct after draining']
+  Concerns : The cast (int)elapsed*b->rate is evaluated as ((int)elapsed)*b->rate which can overflow if elapsed or rate is large, and the drain logic was previously missing so lb_drain had no effect — adding it now changes rate-limiting behavior for all callers.
+  TP=1  TN=2  FP=0  FN=2  Prec=1.000  Rec=0.333  F1=0.500  Acc=0.600
+  Missed       : ['lb_add', 'main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['lb_drain']
+  Predicted affected : ['lb_add', 'main']
+  Concerns : Integer overflow risk: elapsed*b->rate is computed as a signed int multiplication of an unsigned int and a signed int, which can overflow or produce incorrect drain values for large elapsed times or rates.
+  TP=3  TN=2  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.500    Friend 2 F1 = 1.000
+========================================================================

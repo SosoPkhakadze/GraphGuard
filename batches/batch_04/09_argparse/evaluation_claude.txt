@@ -1,0 +1,30 @@
+========================================================================
+Project : 09_argparse  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['ap_parse']
+  Affected : ['main']
+  All fns  : ['ap_add', 'ap_found', 'ap_init', 'ap_parse', 'main']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['parse_args']
+  Predicted affected : ['any caller of parse_args', 'main']
+  Concerns : Adding flag++ to skip a leading dash enables GNU-style double-dash flags (--flag), but the lookup still uses p->args[j].name, so if any registered argument names include the leading dash or if single-dash flags that start with '-' are passed, matching behavior changes silently and could cause flags to be missed or mismatched.
+  TP=1  TN=3  FP=0  FN=1  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.800
+  Missed       : ['ap_parse']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['ap_parse']
+  Predicted affected : ['main']
+  Concerns : Adding double-dash support changes flag parsing behavior, but does not strip both dashes when flag starts with '--', potentially mismatching stored argument names if they were registered without leading dashes.
+  TP=2  TN=3  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000
+========================================================================

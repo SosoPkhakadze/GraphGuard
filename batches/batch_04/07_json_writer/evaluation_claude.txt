@@ -1,0 +1,31 @@
+========================================================================
+Project : 07_json_writer  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['jw_string']
+  Affected : ['main']
+  All fns  : ['jw_get', 'jw_init', 'jw_int', 'jw_raw', 'jw_string', 'main']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['jw_string']
+  Predicted affected : ['any caller that uses jw_string to serialize string values into JSON output', 'jw_int', 'jw_raw']
+  Concerns : The escape for double-quote uses a raw Unicode escape sequence in source (\u0022 style string split) which may not compile correctly on all compilers, and the fix only handles '"' and '\\' but omits escaping other required JSON control characters such as newline, tab, carriage return, and non-printable bytes, leaving output potentially invalid JSON.
+  TP=1  TN=2  FP=2  FN=1  Prec=0.333  Rec=0.500  F1=0.400  Acc=0.500
+  False alarms : ['jw_int', 'jw_raw']
+  Missed       : ['main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['jw_string']
+  Predicted affected : ['main']
+  Concerns : The escaping logic now correctly handles quotes and backslashes, but other special characters (newlines, tabs, control characters) remain unescaped, which may produce invalid JSON for strings containing them.
+  TP=2  TN=4  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.400    Friend 2 F1 = 1.000
+========================================================================

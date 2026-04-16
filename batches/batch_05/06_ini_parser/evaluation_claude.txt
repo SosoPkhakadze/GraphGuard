@@ -1,0 +1,30 @@
+========================================================================
+Project : 06_ini_parser  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['ini_load']
+  Affected : ['main']
+  All fns  : ['ini_get', 'ini_init', 'ini_load', 'main']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['parse_line']
+  Predicted affected : ['any function invoking parse_line that reads cur_sec afterward', 'ini_load', 'ini_parse']
+  Concerns : The added null-terminator correctly prevents cur_sec from retaining stale or garbage data past the section name, but if cur_sec is not sized at least end+1 bytes the write is still an off-by-one or buffer-overflow risk.
+  TP=1  TN=2  FP=0  FN=1  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.750
+  Missed       : ['main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['ini_load']
+  Predicted affected : ['main']
+  Concerns : The added null-terminator fixes a potential bug where cur_sec was not properly terminated after strncpy, which does not guarantee null-termination when the source length equals the specified count, preventing possible buffer over-read or garbled section names in downstream parsing.
+  TP=2  TN=2  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000
+========================================================================

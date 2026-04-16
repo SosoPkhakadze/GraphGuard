@@ -1,0 +1,6 @@
+graphguard_config.json
+.claude/
+__pycache__/
+*.pyc
+*.pyo
+graphguard_analysis.txt

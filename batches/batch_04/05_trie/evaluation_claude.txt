@@ -1,0 +1,31 @@
+========================================================================
+Project : 05_trie  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['trie_insert']
+  Affected : ['main', 'trie_search']
+  All fns  : ['main', 'trie_init', 'trie_insert', 'trie_search']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['trie_insert (or equivalent node allocation block inside the trie traversal/insertion function)']
+  Predicted affected : ['any function that calls trie_insert', 'any traversal or query function that reads ch[] or end fields of trie nodes', 'trie_count', 'trie_delete', 'trie_search']
+  Concerns : Without this fix newly allocated trie nodes had uninitialized ch[] and end fields, causing undefined behaviour (random garbage treated as valid child indices or word-end markers); the patch correctly initialises them at allocation time, but callers and the root node initialisation should be audited to confirm the same memset/-1/end=0 pattern is applied consistently everywhere nodes are created.
+  TP=1  TN=1  FP=0  FN=2  Prec=1.000  Rec=0.333  F1=0.500  Acc=0.500
+  Missed       : ['main', 'trie_insert']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['trie_insert']
+  Predicted affected : ['main']
+  Concerns : New node initialization (zeroing ch[] to -1 and setting end=0) fixes a likely bug where uninitialized child pointers and end flags caused undefined behavior during search, but if trie_init already pre-initializes the nodes array this change may be redundant rather than harmful.
+  TP=2  TN=1  FP=0  FN=1  Prec=1.000  Rec=0.667  F1=0.800  Acc=0.750
+  Missed       : ['trie_search']
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.500    Friend 2 F1 = 0.800
+========================================================================

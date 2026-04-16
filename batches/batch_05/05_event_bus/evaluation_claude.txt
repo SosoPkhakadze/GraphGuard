@@ -1,0 +1,30 @@
+========================================================================
+Project : 05_event_bus  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['eb_emit']
+  Affected : ['main']
+  All fns  : ['eb_count', 'eb_emit', 'eb_init', 'eb_sub', 'main', 'on_ev']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['eb_emit']
+  Predicted affected : ['any caller of eb_emit that checks its return value or relies on single-handler dispatch behavior']
+  Concerns : eb_emit now calls all registered handlers for an event instead of only the first one, and returns the handler count instead of 1, which may cause duplicate processing or broken return-value checks in existing callers.
+  TP=1  TN=4  FP=0  FN=1  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.833
+  Missed       : ['main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['eb_emit']
+  Predicted affected : ['main']
+  Concerns : eb_emit now calls all registered handlers for an event instead of only the first one, and its return value changed from 1 (boolean found) to the count of handlers called, which may break callers checking for a truthy/falsy match signal.
+  TP=2  TN=4  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000
+========================================================================

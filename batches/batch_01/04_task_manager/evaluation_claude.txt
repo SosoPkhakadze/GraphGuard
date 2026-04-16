@@ -1,0 +1,32 @@
+========================================================================
+Project : 04_task_manager  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['queue_push', 'task_set_priority']
+  Affected : ['main', 'scheduler_add']
+  All fns  : ['main', 'queue_init', 'queue_pop', 'queue_push', 'queue_size', 'scheduler_add', 'scheduler_run', 'task_get_priority', 'task_init', 'task_set_priority']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['queue_push', 'task_set_priority']
+  Predicted affected : ['any caller of queue_push that expects insertion-order (FIFO) behavior', 'any caller of task_set_priority that passes values outside 0-10', 'queue_peek', 'queue_pop', 'queue_process_next']
+  Concerns : queue_push now silently reorders items by priority on every insert using a single bubble-up pass, changing the queue from FIFO to a partial priority queue, which may corrupt ordering if multiple items share the same priority or if callers depend on stable insertion order.
+  TP=2  TN=5  FP=1  FN=2  Prec=0.667  Rec=0.500  F1=0.571  Acc=0.700
+  False alarms : ['queue_pop']
+  Missed       : ['main', 'scheduler_add']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['queue_push', 'task_set_priority']
+  Predicted affected : ['scheduler_add']
+  Concerns : Priority clamping in task_set_priority silently discards out-of-range values, and the bubble-sort insertion in queue_push only performs one pass upward which may fail to fully sort if multiple high-priority items are pushed in succession.
+  TP=3  TN=6  FP=0  FN=1  Prec=1.000  Rec=0.750  F1=0.857  Acc=0.900
+  Missed       : ['main']
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.571    Friend 2 F1 = 0.857
+========================================================================

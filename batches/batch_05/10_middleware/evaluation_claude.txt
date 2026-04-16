@@ -1,0 +1,30 @@
+========================================================================
+Project : 10_middleware  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['mw_run']
+  Affected : ['main']
+  All fns  : ['dbl', 'inc', 'main', 'mw_count', 'mw_init', 'mw_run', 'mw_use']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['mw_run']
+  Predicted affected : ['any caller of mw_run']
+  Concerns : Each middleware in the chain now receives the mutated response from the previous handler as its input instead of the original request, changing the chaining semantics so errors or side effects in one handler propagate forward to subsequent handlers.
+  TP=1  TN=5  FP=0  FN=1  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.857
+  Missed       : ['main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['mw_run']
+  Predicted affected : ['main']
+  Concerns : Changing the first argument from the original request value to the current response pointer dereference causes each middleware in the chain to receive the potentially mutated output of the previous handler rather than the original request, altering pipeline semantics and risking unintended behavior if any handler modifies resp.
+  TP=2  TN=5  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000
+========================================================================

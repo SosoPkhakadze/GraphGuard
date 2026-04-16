@@ -1,0 +1,31 @@
+========================================================================
+Project : 08_cache  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['cache_put']
+  Affected : ['main']
+  All fns  : ['cache_get', 'cache_init', 'cache_put', 'cache_stale', 'main']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['cache_put']
+  Predicted affected : ['cache_get']
+  Concerns : The eviction policy changed from always overwriting slot 0 (fixed-slot replacement) to evicting the least-recently-used entry (LRU replacement), which changes cache hit/miss behavior and could affect any caller relying on deterministic slot-0 eviction or specific cache residency assumptions.
+  TP=1  TN=2  FP=1  FN=1  Prec=0.500  Rec=0.500  F1=0.500  Acc=0.600
+  False alarms : ['cache_get']
+  Missed       : ['main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['cache_put']
+  Predicted affected : ['main']
+  Concerns : Eviction policy changed from always overwriting slot 0 to LRU-based eviction, which improves correctness but may alter observable cache behavior in callers that relied on the previous deterministic slot-0 replacement.
+  TP=2  TN=3  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.500    Friend 2 F1 = 1.000
+========================================================================

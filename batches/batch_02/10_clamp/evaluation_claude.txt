@@ -1,0 +1,30 @@
+========================================================================
+Project : 10_clamp  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['clamp']
+  Affected : ['lerp', 'main', 'normalize']
+  All fns  : ['clamp', 'lerp', 'main', 'normalize']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['clamp']
+  Predicted affected : ['normalize']
+  Concerns : The missing upper-bound clamp was a bug; any caller passing values above hi was silently getting unclamped results, so all call sites should be audited and regression-tested to confirm the now-correct behavior does not break downstream logic that may have depended on the old broken behavior.
+  TP=2  TN=0  FP=0  FN=2  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.500
+  Missed       : ['lerp', 'main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['clamp']
+  Predicted affected : ['lerp', 'main', 'normalize']
+  Concerns : The missing upper-bound clamp was a bug; fixing it changes return values for inputs exceeding `hi`, which may alter behavior in `lerp`, `normalize`, and `main` wherever clamped results were previously uncapped.
+  TP=4  TN=0  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000
+========================================================================

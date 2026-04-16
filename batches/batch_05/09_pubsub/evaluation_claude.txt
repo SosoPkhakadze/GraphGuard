@@ -1,0 +1,30 @@
+========================================================================
+Project : 09_pubsub  [Claude / claude-sonnet-4-6]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['ps_pub']
+  Affected : ['main']
+  All fns  : ['main', 'on_msg', 'ps_count', 'ps_init', 'ps_pub', 'ps_sub']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['ps_pub']
+  Predicted affected : ['any caller of ps_pub that checks its return value or relies on single-handler invocation behavior']
+  Concerns : The change calls all registered handlers instead of only the first one and returns the handler count instead of 1, which may break callers that expect a return value of exactly 1 on success, and introduces risk of out-of-bounds access if p->s[i].n exceeds the allocated size of p->s[i].h, plus the pointer equality check for topic strings (==) may silently skip matching subscriptions if strings are not interned.
+  TP=1  TN=4  FP=0  FN=1  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.833
+  Missed       : ['main']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['ps_pub']
+  Predicted affected : ['main']
+  Concerns : ps_pub now iterates all handlers per subscription instead of only calling the first, and returns the handler count instead of 1 on match, which changes the return value semantics and may break callers that check for exactly 1 as a success indicator; also uses pointer equality for topic comparison instead of strcmp, which was already present but remains a latent bug.
+  TP=2  TN=4  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Friend 2 (diff+graph)
+  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000
+========================================================================
