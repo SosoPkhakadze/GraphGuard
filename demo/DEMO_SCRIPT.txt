@@ -1,0 +1,132 @@
+================================================================================
+  GraphGuard  —  Lecturer Demo Script
+  Project: Banking System  (4 files, 16 functions)
+================================================================================
+
+CALL GRAPH (who calls who)
+--------------------------
+  main
+    calls  account_store_init
+    calls  tx_log_init
+    calls  account_create
+    calls  tx_execute
+               calls  account_deposit
+               calls  account_withdraw     <-- we will change this
+                          calls  account_find
+    calls  report_summary
+               calls  report_net_worth
+               calls  tx_count_ok
+               calls  tx_count_failed      <-- we will change this
+               calls  tx_total_volume
+               calls  report_balances
+               calls  report_failed_txs
+                          calls  tx_count_failed
+
+KEY INSIGHT: When we change account_withdraw and tx_count_failed,
+the impact ripples UP through every caller in the chain.
+Diff-only can only see the two changed files.
+The call graph lets the AI trace all the way back to main.
+
+================================================================================
+  STEP 1 — MAKE TWO CHANGES
+================================================================================
+
+Open demo/src/account.c and change account_withdraw:
+
+  BEFORE:
+    int account_withdraw(AccountStore *store, int id, int amount) {
+        Account *a = account_find(store, id);
+        if (!a || amount <= 0 || a->frozen) return -1;
+        if (a->balance < amount) return -2;
+        a->balance -= amount;
+        return 0;
+    }
+
+  AFTER (add a 10% withdrawal fee):
+    int account_withdraw(AccountStore *store, int id, int amount) {
+        Account *a = account_find(store, id);
+        if (!a || amount <= 0 || a->frozen) return -1;
+        int fee   = amount / 10;
+        int total = amount + fee;
+        if (a->balance < total) return -2;
+        a->balance -= total;
+        return 0;
+    }
+
+----
+
+Open demo/src/transaction.c and change tx_count_failed:
+
+  BEFORE:
+    int tx_count_failed(TxLog *log) {
+        int n = 0;
+        for (int i = 0; i < log->count; i++)
+            if (log->txs[i].status == -1) n++;
+        return n;
+    }
+
+  AFTER (also count zero-amount transactions as failed):
+    int tx_count_failed(TxLog *log) {
+        int n = 0;
+        for (int i = 0; i < log->count; i++)
+            if (log->txs[i].status == -1 || log->txs[i].amount == 0) n++;
+        return n;
+    }
+
+================================================================================
+  STEP 2 — RUN GRAPHGUARD ANALYZE (DIFF ONLY)
+================================================================================
+
+  cd GraphGuard\demo
+  graphguard analyze
+
+  When asked for approach: choose [1] Diff only
+
+  EXPECTED RESULT:
+    Changed  : account_withdraw, tx_count_failed
+    Affected : tx_execute  (because it's in the diff file)
+    Missing  : report_failed_txs, report_summary, report_balances, main
+               — these are in report.c which the diff didn't touch,
+                 so the AI has no way to know they exist.
+
+================================================================================
+  STEP 3 — RUN AGAIN (DIFF + CALL GRAPH)
+================================================================================
+
+  graphguard analyze
+
+  When asked for approach: choose [2] Diff + Call Graph
+
+  EXPECTED RESULT:
+    Changed  : account_withdraw, tx_count_failed
+    Affected : tx_execute, report_failed_txs, report_summary, main
+               — the AI can now follow the graph:
+                 account_withdraw <- tx_execute <- main
+                 tx_count_failed  <- report_failed_txs <- report_summary <- main
+
+================================================================================
+  WHAT TO TELL YOUR PROFESSOR
+================================================================================
+
+"Both approaches correctly identify the two changed functions.
+
+The difference is in what gets AFFECTED.
+
+With diff only, the AI sees two files. It can infer that tx_execute
+calls account_withdraw (because both are in the same file), but it
+has no visibility into report.c at all — so it misses report_failed_txs,
+report_summary, and ultimately main.
+
+With the call graph, the AI receives an adjacency list of every
+function in the project and who calls who. It can now follow the
+full chain: changing account_withdraw breaks tx_execute, which
+is called by main. Changing tx_count_failed breaks report_failed_txs
+and report_summary — in a different file entirely — which are both
+called by main.
+
+This is exactly the gap measured in my thesis across 50 projects:
+Friend 1 (diff only) averages F1 = 0.52.
+Friend 2 (diff + call graph) averages F1 = 0.98.
+The call graph is responsible for almost all of that difference."
+
+================================================================================
