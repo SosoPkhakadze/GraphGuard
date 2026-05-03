@@ -1,2 +1,2 @@
 @echo off
-python "%~dp0graphguard.py" %*
+"C:\Users\ASUS_ZEPHYRUS\AppData\Local\Programs\Python\Python312\python.exe" "%~dp0graphguard.py" %*

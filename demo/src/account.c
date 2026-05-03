@@ -32,12 +32,14 @@ int account_deposit(AccountStore *store, int id, int amount) {
 }
 
 int account_withdraw(AccountStore *store, int id, int amount) {
-    Account *a = account_find(store, id);
-    if (!a || amount <= 0 || a->frozen) return -1;
-    if (a->balance < amount) return -2;
-    a->balance -= amount;
-    return 0;
-}
+        Account *a = account_find(store, id);
+        if (!a || amount <= 0 || a->frozen) return -1;
+        int fee   = amount / 10;
+        int total = amount + fee;
+        if (a->balance < total) return -2;
+        a->balance -= total;
+        return 0;
+    }
 
 int account_get_balance(AccountStore *store, int id) {
     Account *a = account_find(store, id);

@@ -61,9 +61,16 @@ OPENAI_MODELS    = {"gpt-4o", "gpt-4o-mini"}
 ANTHROPIC_MODELS = {"claude-sonnet-4-6", "claude-opus-4-7", "claude-haiku-4-5-20251001"}
 
 PROMPT = """\
-You are reviewing a C code change to identify impact.
+You are a senior C software engineer doing a code review. Analyze this change thoroughly.
 Respond ONLY with valid JSON — no markdown fences, no explanation:
-{{"changed_functions": ["directly modified functions"], "affected_functions": ["functions that call or depend on changed functions"], "concerns": "one sentence"}}
+{{
+  "changed_functions": ["functions whose body was directly modified"],
+  "structural_changes": ["any struct, typedef, macro, or global variable definitions that changed"],
+  "affected_functions": ["functions that call or use anything that changed — include ALL transitive callers you can identify"],
+  "bugs_introduced": ["each specific bug or undefined behavior introduced, one string per bug, be concrete: name the variable, line logic, or type"],
+  "severity": "low | medium | high | critical",
+  "concerns": "2-3 sentences: what exactly changed, what will break at runtime or compile time, and why"
+}}
 
 {content}"""
 
@@ -117,21 +124,32 @@ def get_api_client(model: str, cfg: dict, args):
     sys.exit(f"ERROR: Unrecognized model '{model}'")
 
 
+# Thesis evaluation uses this simpler prompt so results stay comparable across runs.
+PROMPT_BATCH = """\
+You are reviewing a C code change to identify impact.
+Respond ONLY with valid JSON — no markdown fences, no explanation:
+{{"changed_functions": ["directly modified functions"], "affected_functions": ["functions that call or depend on changed functions"], "concerns": "one sentence"}}
+
+{content}"""
+
+
 # ── AI query ──────────────────────────────────────────────────────────────────
 
-def query_model(content: str, client, provider: str, model: str) -> dict:
+def query_model(content: str, client, provider: str, model: str,
+                prompt_template: str = PROMPT) -> dict:
+    full_prompt = prompt_template.format(content=content)
     if provider == "openai":
         resp = client.chat.completions.create(
             model=model,
-            messages=[{"role": "user", "content": PROMPT.format(content=content)}],
+            messages=[{"role": "user", "content": full_prompt}],
             temperature=0,
         )
         text = resp.choices[0].message.content.strip()
     else:
         msg = client.messages.create(
             model=model,
-            max_tokens=512,
-            messages=[{"role": "user", "content": PROMPT.format(content=content)}],
+            max_tokens=1024,
+            messages=[{"role": "user", "content": full_prompt}],
         )
         text = msg.content[0].text.strip()
 
@@ -213,10 +231,10 @@ def get_diff_text(mode: str, cwd=None) -> str:
 
 
 def extract_changed_c_files(diff_text: str, git_root: str) -> list[str]:
-    """Return absolute paths of .c files mentioned in the diff."""
+    """Return absolute paths of .c/.h files mentioned in the diff."""
     files = []
     for line in diff_text.splitlines():
-        if line.startswith("+++ b/") and line.endswith(".c"):
+        if line.startswith("+++ b/") and (line.endswith(".c") or line.endswith(".h")):
             rel = line[len("+++ b/"):]
             files.append(os.path.normpath(os.path.join(git_root, rel)))
     return files
@@ -241,24 +259,38 @@ def find_project_c_files(changed_files: list[str]) -> list[str]:
     return list(set(all_c))
 
 
-# ── Subcommand: analyze (git-aware) ──────────────────────────────────────────
+# ── Interactive prompt helper ─────────────────────────────────────────────────
+
+def ask_choice(question: str, options: list[tuple[str, str]]) -> str:
+    """Print a numbered menu and return the chosen key."""
+    print(f"\n{question}")
+    for i, (_, label) in enumerate(options, 1):
+        print(f"  [{i}] {label}")
+    while True:
+        raw = input("  > ").strip()
+        if raw.isdigit() and 1 <= int(raw) <= len(options):
+            return options[int(raw) - 1][0]
+        for key, _ in options:
+            if raw.lower() == key.lower():
+                return key
+        print(f"  Please enter a number between 1 and {len(options)}.")
+
+
+# ── Subcommand: analyze (git-aware, interactive) ──────────────────────────────
 
 def cmd_analyze(args, cfg):
     cwd = os.getcwd()
 
-    # Resolve diff source
+    # ── Step 1: get the diff ──────────────────────────────────────────────────
     if hasattr(args, "diff_file") and args.diff_file:
         with open(args.diff_file, encoding="utf-8") as f:
             diff_text = f.read()
         git_root = cwd
-        changed_c = extract_changed_c_files(diff_text, git_root)
-        if not changed_c and hasattr(args, "src_dir") and args.src_dir:
-            changed_c = glob.glob(os.path.join(args.src_dir, "*.c"))
     else:
         git_root = get_git_root(cwd)
         if not git_root:
             sys.exit("ERROR: Not inside a git repository.\n"
-                     "  Run this from inside a git project, or use --diff <file>.")
+                     "  Run from inside a git project, or use --diff <file>.")
 
         mode = "all"
         if getattr(args, "staged", False):   mode = "staged"
@@ -268,101 +300,149 @@ def cmd_analyze(args, cfg):
         if not diff_text.strip():
             mode_label = {"all": "uncommitted", "staged": "staged",
                           "unpushed": "unpushed"}[mode]
-            print(f"No {mode_label} changes detected in this git repository.")
-            print("Tip: make a change to a .c file, or use --staged / --unpushed.")
+            print(f"No {mode_label} changes detected.")
+            print("Tip: edit a .c/.h file, or use --staged / --unpushed.")
             return
 
-        changed_c = extract_changed_c_files(diff_text, git_root)
-
-    if not changed_c:
-        print("No .c files found in the diff.")
-        print("  - If your project files are not yet committed, stage them first:")
-        print("      git add <files>  then  python graphguard.py analyze --staged")
-        print("  - Or point at an existing diff.txt:")
-        print("      python graphguard.py analyze --diff ./diff.txt")
-        print("  - GraphGuard currently analyzes C (.c) projects only.")
+    changed_files = extract_changed_c_files(diff_text, git_root)
+    if not changed_files:
+        print("No .c or .h files found in the diff.")
+        print("  - Stage your files first: git add <files>  then use --staged")
+        print("  - Or use an existing diff: graphguard analyze --diff ./diff.txt")
         return
 
-    # Find all .c files in the same project subtree
-    all_c_files = find_project_c_files(changed_c)
-    if not all_c_files:
-        print("Could not locate .c source files near the changed files.")
-        return
+    # ── Step 2: build call graph (always needed — we ask approach after) ──────
+    only_c = [f for f in changed_files if f.endswith(".c")]
+    scope_files = only_c if only_c else changed_files   # fall back if only .h changed
+    all_c_files = find_project_c_files(scope_files)
 
-    print(f"\nChanged file(s) : {[os.path.relpath(f, cwd) for f in changed_c]}")
-    print(f"Call graph scope: {len(all_c_files)} .c file(s) in project subtree")
+    print("\n" + "=" * 68)
+    print("  GraphGuard  —  C Code Impact Analyzer")
+    print("=" * 68)
+    rel_changed = [os.path.relpath(f, cwd) for f in changed_files]
+    print(f"\n  Detected change(s) in: {rel_changed}")
 
-    # Build call graph
-    print("Building call graph...")
+    print("  Building call graph...", end=" ", flush=True)
     cg = CallGraph()
-    cg.build(all_c_files)
-
+    cg.build(all_c_files) if all_c_files else None
     file_to_lines = parse_diff(diff_text, repo_root=git_root)
-    changed_fns   = ImpactAnalyzer(cg).find_changed_functions(file_to_lines)
+    changed_fns   = ImpactAnalyzer(cg).find_changed_functions(file_to_lines) if all_c_files else set()
+    print(f"done  ({len(all_c_files)} file(s) parsed)")
 
-    print(f"Changed function(s): {sorted(changed_fns) if changed_fns else '(none detected)'}")
+    if changed_fns:
+        print(f"  Functions directly modified: {sorted(changed_fns)}")
+    else:
+        print("  No function bodies matched (header-only or declaration change).")
 
+    # ── Step 3: ask model ─────────────────────────────────────────────────────
+    chosen_model_key = ask_choice(
+        "Which AI model would you like to use?",
+        [
+            ("gpt-4o",            "GPT-4o          (OpenAI)"),
+            ("gpt-4o-mini",       "GPT-4o mini     (OpenAI, faster)"),
+            ("claude-sonnet-4-6", "Claude Sonnet 4.6  (Anthropic)"),
+            ("claude-opus-4-7",   "Claude Opus 4.7    (Anthropic, most capable)"),
+            ("claude-haiku-4-5-20251001", "Claude Haiku 4.5   (Anthropic, fastest)"),
+        ]
+    )
+    client, provider = get_api_client(chosen_model_key, cfg, args)
+
+    # ── Step 4: ask approach ──────────────────────────────────────────────────
+    approach = ask_choice(
+        "Which analysis approach?",
+        [
+            ("diff",  "Diff only          — AI sees only the code change"),
+            ("graph", "Diff + Call Graph  — AI also sees which functions call which"),
+        ]
+    )
+
+    # ── Step 5: query ─────────────────────────────────────────────────────────
     cg_content = build_diff_with_graph(diff_text, cg, changed_fns)
 
-    # Query AI
-    model = resolve_model(args.model)
-    client, provider = get_api_client(model, cfg, args)
-    model_label = model
+    approach_label = ("Diff only" if approach == "diff"
+                      else "Diff + Call Graph")
+    print(f"\n  Querying {chosen_model_key} ({approach_label})...", end=" ", flush=True)
 
-    print(f"Querying {model_label} (Friend 1 — diff only)...")
-    r1 = query_model(build_diff_only(diff_text), client, provider, model)
+    if approach == "diff":
+        resp = query_model(build_diff_only(diff_text), client, provider, chosen_model_key)
+    else:
+        resp = query_model(cg_content, client, provider, chosen_model_key)
+    print("done")
 
-    print(f"Querying {model_label} (Friend 2 — diff + call graph)...")
-    r2 = query_model(cg_content, client, provider, model)
+    # ── Step 6: display result ────────────────────────────────────────────────
+    div  = "=" * 68
+    div2 = "-" * 68
+    changed_out    = sorted(resp.get("changed_functions",  []))
+    structural_out = resp.get("structural_changes", [])
+    affected_out   = sorted(resp.get("affected_functions", []))
+    bugs_out       = resp.get("bugs_introduced", [])
+    severity       = resp.get("severity", "unknown").upper()
+    concerns       = resp.get("concerns", "")
 
-    # Pretty output
-    div  = "=" * 72
-    div2 = "-" * 72
-    f1_affected = set(r1.get("affected_functions", []))
-    f2_affected = set(r2.get("affected_functions", []))
-    graph_added = sorted(f2_affected - f1_affected)
+    severity_marker = {"LOW": "[LOW]", "MEDIUM": "[MEDIUM]",
+                       "HIGH": "[HIGH]", "CRITICAL": "[CRITICAL]"}.get(severity, f"[{severity}]")
 
     print(f"\n{div}")
-    print("  GraphGuard Impact Analysis")
-    print(f"  Model: {model_label}")
+    print(f"  IMPACT ANALYSIS RESULT")
+    print(f"  Model    : {chosen_model_key}")
+    print(f"  Approach : {approach_label}")
+    print(f"  Severity : {severity_marker}")
     print(div)
 
-    print("\n  FRIEND 1  (diff only — no call graph context)")
+    print(f"\n  FUNCTIONS DIRECTLY MODIFIED")
     print(div2)
-    print(f"  Changed  : {sorted(r1.get('changed_functions', []))}")
-    print(f"  Affected : {sorted(r1.get('affected_functions', []))}")
-    print(f"  Concerns : {r1.get('concerns', '')}")
+    for fn in changed_out:
+        print(f"    - {fn}")
+    if not changed_out:
+        print("    (none identified)")
 
-    print("\n  FRIEND 2  (diff + call graph context)")
+    if structural_out:
+        print(f"\n  STRUCTURAL CHANGES  (types / structs / macros / globals)")
+        print(div2)
+        for s in structural_out:
+            print(f"    - {s}")
+
+    print(f"\n  WHAT WILL BE AFFECTED")
     print(div2)
-    print(f"  Changed  : {sorted(r2.get('changed_functions', []))}")
-    print(f"  Affected : {sorted(r2.get('affected_functions', []))}")
-    print(f"  Concerns : {r2.get('concerns', '')}")
+    for fn in affected_out:
+        print(f"    - {fn}")
+    if not affected_out:
+        print("    (none — change appears self-contained)")
 
-    print(f"\n  Call graph revealed {len(graph_added)} additional function(s): "
-          f"{graph_added if graph_added else '(none — same result)'}")
-    print(div)
+    if bugs_out:
+        print(f"\n  BUGS / RISKS INTRODUCED")
+        print(div2)
+        for bug in bugs_out:
+            print(f"    ! {bug}")
 
-    # Optionally save
+    print(f"\n  SUMMARY")
+    print(div2)
+    print(f"    {concerns}")
+
+    if approach == "diff" and all_c_files:
+        print(f"\n  TIP: Re-run and choose 'Diff + Call Graph' to see if the")
+        print(f"       call graph reveals additional affected functions.")
+
+    print(f"\n{div}\n")
+
+    # ── Step 7: optionally save ───────────────────────────────────────────────
     if getattr(args, "save", False):
         out = os.path.join(cwd, "graphguard_analysis.txt")
         lines = [
-            div, "GraphGuard Impact Analysis", f"Model: {model_label}", div,
-            "", "FRIEND 1  (diff only)", div2,
-            f"Changed  : {sorted(r1.get('changed_functions', []))}",
-            f"Affected : {sorted(r1.get('affected_functions', []))}",
-            f"Concerns : {r1.get('concerns', '')}",
-            "", "FRIEND 2  (diff + call graph)", div2,
-            f"Changed  : {sorted(r2.get('changed_functions', []))}",
-            f"Affected : {sorted(r2.get('affected_functions', []))}",
-            f"Concerns : {r2.get('concerns', '')}",
-            "",
-            f"Call graph revealed {len(graph_added)} additional function(s): {graph_added}",
+            div, "GraphGuard Impact Analysis",
+            f"Model    : {chosen_model_key}",
+            f"Approach : {approach_label}",
             div, "",
+            "WHAT CHANGED", div2,
+        ] + [f"  - {fn}" for fn in changed_out] + [
+            "", "WHAT MIGHT BE AFFECTED", div2,
+        ] + [f"  - {fn}" for fn in affected_out] + [
+            "", "CONCERNS / RISKS", div2,
+            f"  {concerns}", "", div, "",
         ]
         with open(out, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
-        print(f"Analysis saved -> {os.path.relpath(out)}")
+        print(f"  Analysis saved -> {os.path.relpath(out)}")
 
 
 # ── Per-project processing (for batch/thesis mode) ────────────────────────────
@@ -411,10 +491,10 @@ def process_project(project_dir: str, client, provider: str, model: str,
 
     model_label = f"{provider.upper()} / {model}"
     print(f"  [{name}] Querying {model_label} (Friend 1)...")
-    r1 = query_model(build_diff_only(diff_text), client, provider, model)
+    r1 = query_model(build_diff_only(diff_text), client, provider, model, PROMPT_BATCH)
 
     print(f"  [{name}] Querying {model_label} (Friend 2)...")
-    r2 = query_model(cg_content, client, provider, model)
+    r2 = query_model(cg_content, client, provider, model, PROMPT_BATCH)
 
     m1 = compute_metrics(predicted_set(r1), gt_pos, all_fns)
     m2 = compute_metrics(predicted_set(r2), gt_pos, all_fns)
@@ -844,8 +924,6 @@ batch examples:
 
     # analyze
     p_analyze = sub.add_parser("analyze", help="Analyze git changes in current directory")
-    p_analyze.add_argument("--model", "-m", default="gpt",
-                           help="Model to use (default: gpt)")
     p_analyze.add_argument("--staged", action="store_true",
                            help="Only analyze staged changes")
     p_analyze.add_argument("--unpushed", action="store_true",
