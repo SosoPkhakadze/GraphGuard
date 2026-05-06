@@ -29,6 +29,7 @@ from analyzer.callgraph       import CallGraph
 from analyzer.diff_parser     import parse as parse_diff
 from analyzer.impact          import ImpactAnalyzer
 from analyzer.context_builder import build_diff_with_graph, build_diff_only
+from analyzer.agent           import run_agent
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 CONFIG_FILE = os.path.join(ROOT, "graphguard_config.json")
@@ -353,21 +354,31 @@ def cmd_analyze(args, cfg):
         [
             ("diff",  "Diff only          — AI sees only the code change"),
             ("graph", "Diff + Call Graph  — AI also sees which functions call which"),
+            ("agent", "Agent              — AI retrieves context iteratively (Claude only)"),
         ]
     )
+
+    if approach == "agent" and provider != "anthropic":
+        print("\n  Agent mode requires a Claude model. Switching to claude-sonnet-4-6.")
+        chosen_model_key = "claude-sonnet-4-6"
+        client, provider = get_api_client(chosen_model_key, cfg, args)
 
     # ── Step 5: query ─────────────────────────────────────────────────────────
     cg_content = build_diff_with_graph(diff_text, cg, changed_fns)
 
-    approach_label = ("Diff only" if approach == "diff"
-                      else "Diff + Call Graph")
+    approach_label = {"diff": "Diff only", "graph": "Diff + Call Graph",
+                      "agent": "Agent"}[approach]
     print(f"\n  Querying {chosen_model_key} ({approach_label})...", end=" ", flush=True)
 
     if approach == "diff":
         resp = query_model(build_diff_only(diff_text), client, provider, chosen_model_key)
-    else:
+    elif approach == "graph":
         resp = query_model(cg_content, client, provider, chosen_model_key)
-    print("done")
+    else:
+        print()  # newline before agent tool call log
+        resp = run_agent(diff_text, changed_fns, cg, all_c_files, client, chosen_model_key)
+    if approach != "agent":
+        print("done")
 
     # ── Step 6: display result ────────────────────────────────────────────────
     div  = "=" * 68
@@ -419,9 +430,19 @@ def cmd_analyze(args, cfg):
     print(div2)
     print(f"    {concerns}")
 
+    tool_log = resp.get("_tool_log", [])
+    if tool_log:
+        print(f"\n  TOOLS CALLED BY AGENT")
+        print(div2)
+        for i, t in enumerate(tool_log, 1):
+            print(f"    {i}. {t}")
+
     if approach == "diff" and all_c_files:
         print(f"\n  TIP: Re-run and choose 'Diff + Call Graph' to see if the")
         print(f"       call graph reveals additional affected functions.")
+    elif approach == "graph" and all_c_files:
+        print(f"\n  TIP: Re-run and choose 'Agent' for iterative analysis that")
+        print(f"       can also detect contract violations and function pointers.")
 
     print(f"\n{div}\n")
 
