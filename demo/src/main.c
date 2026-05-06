@@ -11,7 +11,7 @@ int main(void) {
     tx_log_init(&log);
 
     /* create accounts */
-    account_create(&store, 1, "Alice",  1100);
+    account_create(&store, 1, "Alice",  1000);
     account_create(&store, 2, "Bob",     500);
     account_create(&store, 3, "Carol",   200);
     account_create(&store, 4, "Dave",   3000);
