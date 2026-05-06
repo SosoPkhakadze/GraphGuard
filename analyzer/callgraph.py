@@ -2,10 +2,60 @@ import clang.cindex
 from clang.cindex import Index, CursorKind
 import os
 import json
+import platform
 
-clang.cindex.Config.set_library_file(
-    r"C:\Program Files\LLVM\bin\libclang.dll"
-)
+
+def _configure_libclang():
+    """Find and configure libclang. Checks LIBCLANG_PATH env var, then common OS paths."""
+    env = os.environ.get("LIBCLANG_PATH")
+    if env:
+        if not os.path.isfile(env):
+            raise RuntimeError(f"LIBCLANG_PATH set but file not found: {env}")
+        clang.cindex.Config.set_library_file(env)
+        return
+
+    system = platform.system()
+
+    if system == "Windows":
+        candidates = [r"C:\Program Files\LLVM\bin\libclang.dll",
+                      r"C:\Program Files (x86)\LLVM\bin\libclang.dll"]
+        llvm = os.environ.get("LLVM_PATH")
+        if llvm:
+            candidates.insert(0, os.path.join(llvm, "bin", "libclang.dll"))
+        for c in candidates:
+            if os.path.isfile(c):
+                clang.cindex.Config.set_library_file(c)
+                return
+        raise RuntimeError(
+            "libclang.dll not found.\n"
+            "  Install LLVM: https://releases.llvm.org/\n"
+            "  Or set: $env:LIBCLANG_PATH = 'C:\\path\\to\\libclang.dll'"
+        )
+
+    elif system == "Darwin":
+        candidates = ["/opt/homebrew/opt/llvm/lib/libclang.dylib",
+                      "/usr/local/opt/llvm/lib/libclang.dylib"]
+        for c in candidates:
+            if os.path.isfile(c):
+                clang.cindex.Config.set_library_file(c)
+                return
+        # fall through — clang may find it on its own via dyld
+
+    else:  # Linux
+        for ver in range(18, 12, -1):
+            for p in [f"/usr/lib/llvm-{ver}/lib/libclang.so",
+                      f"/usr/lib/x86_64-linux-gnu/libclang-{ver}.so.1"]:
+                if os.path.isfile(p):
+                    clang.cindex.Config.set_library_file(p)
+                    return
+        for p in ["/usr/lib/x86_64-linux-gnu/libclang.so", "/usr/lib/libclang.so"]:
+            if os.path.isfile(p):
+                clang.cindex.Config.set_library_file(p)
+                return
+        # fall through — clang may find it via ld.so
+
+
+_configure_libclang()
 
 
 class CallGraph:

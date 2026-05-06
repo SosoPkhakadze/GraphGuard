@@ -1,0 +1,55 @@
+{
+  "name": "graphguard",
+  "displayName": "GraphGuard",
+  "description": "AI-powered C code impact analyzer — traces call graph impact of uncommitted changes",
+  "version": "0.1.0",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": ["workspaceContains:**/*.c"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "graphguard",
+          "title": "GraphGuard",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "graphguard": [
+        {
+          "type": "webview",
+          "id": "graphguard.sidebar",
+          "name": "Impact Analyzer"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "GraphGuard",
+      "properties": {
+        "graphguard.pythonPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to Python executable. Leave empty to use 'python' from PATH."
+        },
+        "graphguard.scriptPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to graphguard.py. Leave empty to auto-detect from extension location."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}
