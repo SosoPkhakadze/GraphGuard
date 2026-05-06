@@ -1,95 +1,112 @@
-import * as vscode from 'vscode';
-import * as cp from 'child_process';
-import * as path from 'path';
-import * as fs from 'fs';
-
-export function activate(context: vscode.ExtensionContext) {
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.activate = activate;
+exports.deactivate = deactivate;
+const vscode = __importStar(require("vscode"));
+const cp = __importStar(require("child_process"));
+const path = __importStar(require("path"));
+const fs = __importStar(require("fs"));
+function activate(context) {
     const provider = new GraphGuardViewProvider(context.extensionUri);
-    context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider('graphguard.sidebar', provider)
-    );
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider('graphguard.sidebar', provider));
 }
-
-export function deactivate() {}
-
+function deactivate() { }
 // ── Paths ─────────────────────────────────────────────────────────────────────
-
-function resolvePython(): string {
+function resolvePython() {
     const cfg = vscode.workspace.getConfiguration('graphguard');
-    const custom = cfg.get<string>('pythonPath');
-    if (custom) return custom;
+    const custom = cfg.get('pythonPath');
+    if (custom)
+        return custom;
     // On Windows 'python' is often absent; 'py' (launcher) is the reliable default
     return process.platform === 'win32' ? 'py' : 'python3';
 }
-
-function resolveScript(extensionUri: vscode.Uri): string | null {
+function resolveScript(extensionUri) {
     const cfg = vscode.workspace.getConfiguration('graphguard');
-    const custom = cfg.get<string>('scriptPath');
+    const custom = cfg.get('scriptPath');
     if (custom) {
-        if (fs.existsSync(custom)) return custom;
+        if (fs.existsSync(custom))
+            return custom;
         return null; // explicitly set but wrong — report the bad path
     }
     // When running from the repo (F5 dev mode), extensionUri is vscode-extension/
     const sibling = path.join(extensionUri.fsPath, '..', 'graphguard.py');
-    if (fs.existsSync(sibling)) return sibling;
-
+    if (fs.existsSync(sibling))
+        return sibling;
     return null;
 }
-
 // ── Provider ──────────────────────────────────────────────────────────────────
-
-class GraphGuardViewProvider implements vscode.WebviewViewProvider {
-    private _view?: vscode.WebviewView;
-    private _watcher?: vscode.FileSystemWatcher;
-    private _debounce?: ReturnType<typeof setTimeout>;
-    private _running = false;
-
-    constructor(private readonly _extensionUri: vscode.Uri) {}
-
-    resolveWebviewView(
-        webviewView: vscode.WebviewView,
-        _context: vscode.WebviewViewResolveContext,
-        _token: vscode.CancellationToken
-    ) {
+class GraphGuardViewProvider {
+    constructor(_extensionUri) {
+        this._extensionUri = _extensionUri;
+        this._running = false;
+    }
+    resolveWebviewView(webviewView, _context, _token) {
         this._view = webviewView;
         webviewView.webview.options = { enableScripts: true };
         webviewView.webview.html = getWebviewHtml();
-
         webviewView.webview.onDidReceiveMessage(msg => {
             if (msg.type === 'analyze') {
                 this._runAnalysis(msg.model, msg.approach);
             }
         });
-
         this._startWatcher();
         this._checkDiff();
     }
-
     // ── File watcher ─────────────────────────────────────────────────────────
-
-    private _startWatcher() {
+    _startWatcher() {
         this._watcher = vscode.workspace.createFileSystemWatcher('**/*.{c,h}');
         const debounce = () => {
-            if (this._debounce) clearTimeout(this._debounce);
+            if (this._debounce)
+                clearTimeout(this._debounce);
             this._debounce = setTimeout(() => this._checkDiff(), 600);
         };
         this._watcher.onDidChange(debounce);
         this._watcher.onDidCreate(debounce);
         this._watcher.onDidDelete(debounce);
     }
-
     // ── Git diff check ────────────────────────────────────────────────────────
-
-    private _checkDiff() {
+    _checkDiff() {
         const root = workspaceRoot();
-        if (!root) return;
-
+        if (!root)
+            return;
         cp.exec('git diff HEAD --name-only', { cwd: root }, (_err, stdout) => {
             const files = stdout.trim()
                 .split('\n')
                 .filter(f => f.endsWith('.c') || f.endsWith('.h'))
                 .map(f => path.basename(f));
-
             this._view?.webview.postMessage({
                 type: 'status',
                 hasChanges: files.length > 0,
@@ -97,17 +114,16 @@ class GraphGuardViewProvider implements vscode.WebviewViewProvider {
             });
         });
     }
-
     // ── Analysis runner ───────────────────────────────────────────────────────
-
-    private _runAnalysis(model: string, approach: string) {
-        if (this._running) return;
+    _runAnalysis(model, approach) {
+        if (this._running)
+            return;
         const root = workspaceRoot();
-        if (!root) return;
-
+        if (!root)
+            return;
         const script = resolveScript(this._extensionUri);
         if (!script) {
-            const configured = vscode.workspace.getConfiguration('graphguard').get<string>('scriptPath');
+            const configured = vscode.workspace.getConfiguration('graphguard').get('scriptPath');
             const detail = configured
                 ? `scriptPath is set to "${configured}" but that file does not exist.`
                 : 'graphguard.py could not be found automatically.';
@@ -117,29 +133,24 @@ class GraphGuardViewProvider implements vscode.WebviewViewProvider {
             });
             return;
         }
-
         this._running = true;
         const python = resolvePython();
-
         const proc = cp.spawn(python, [script, 'analyze', '--model', model, '--approach', approach], {
             cwd: root,
         });
-
-        proc.stdout.on('data', (data: Buffer) => {
+        proc.stdout.on('data', (data) => {
             for (const line of data.toString().split('\n')) {
                 if (line.trim()) {
                     this._view?.webview.postMessage({ type: 'output', line });
                 }
             }
         });
-
-        proc.stderr.on('data', (data: Buffer) => {
+        proc.stderr.on('data', (data) => {
             const text = data.toString().trim();
             if (text) {
                 this._view?.webview.postMessage({ type: 'output', line: text });
             }
         });
-
         proc.on('close', (code) => {
             this._running = false;
             if (code !== 0) {
@@ -152,8 +163,7 @@ class GraphGuardViewProvider implements vscode.WebviewViewProvider {
             this._checkDiff();
             this._view?.webview.postMessage({ type: 'done' });
         });
-
-        proc.on('error', (err: Error) => {
+        proc.on('error', (err) => {
             this._running = false;
             this._view?.webview.postMessage({
                 type: 'error',
@@ -162,16 +172,12 @@ class GraphGuardViewProvider implements vscode.WebviewViewProvider {
         });
     }
 }
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function workspaceRoot(): string | undefined {
+function workspaceRoot() {
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 }
-
 // ── Webview HTML ──────────────────────────────────────────────────────────────
-
-function getWebviewHtml(): string {
+function getWebviewHtml() {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -396,3 +402,4 @@ function getWebviewHtml(): string {
 </body>
 </html>`;
 }
+//# sourceMappingURL=extension.js.map
