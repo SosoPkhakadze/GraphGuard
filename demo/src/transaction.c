@@ -40,11 +40,11 @@ int tx_count_ok(TxLog *log) {
 }
 
 int tx_count_failed(TxLog *log) {
-        int n = 0;
-        for (int i = 0; i < log->count; i++)
-            if (log->txs[i].status == -1 || log->txs[i].amount == 0) n++;
-        return n;
-    }
+    int n = 0;
+    for (int i = 0; i < log->count; i++)
+        if (log->txs[i].status == -1) n++;
+    return n;
+}
 
 int tx_total_volume(TxLog *log) {
     int total = 0;
