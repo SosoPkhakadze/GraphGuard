@@ -137,6 +137,7 @@ class GraphGuardViewProvider {
         const python = resolvePython();
         const proc = cp.spawn(python, [script, 'analyze', '--model', model, '--approach', approach], {
             cwd: root,
+            env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
         });
         proc.stdout.on('data', (data) => {
             for (const line of data.toString().split('\n')) {
@@ -182,127 +183,169 @@ function getWebviewHtml() {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    padding: 12px;
-    font-family: var(--vscode-font-family);
-    font-size: var(--vscode-font-size);
-    color: var(--vscode-foreground);
-    background: var(--vscode-sideBar-background);
-  }
+body {
+  padding: 12px;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  background: var(--vscode-sideBar-background);
+}
 
-  h3 {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--vscode-sideBarSectionHeader-foreground);
-    margin-bottom: 10px;
-    opacity: 0.8;
-  }
+h3 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+  margin-bottom: 10px;
+}
 
-  .status {
-    font-size: 12px;
-    padding: 6px 8px;
-    border-radius: 3px;
-    margin-bottom: 12px;
-    border-left: 3px solid transparent;
-  }
+.status {
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 3px;
+  margin-bottom: 12px;
+  border-left: 3px solid transparent;
+}
+.status.idle    { background: var(--vscode-inputValidation-infoBackground, #1a3a4a); border-color: #007acc; }
+.status.ready   { background: var(--vscode-inputValidation-warningBackground, #352a05); border-color: #b89500; }
 
-  .status.idle {
-    background: var(--vscode-inputValidation-infoBackground, #1a3a4a);
-    border-color: var(--vscode-inputValidation-infoBorder, #007acc);
-    color: var(--vscode-inputValidation-infoForeground, #cce7ff);
-  }
+label { display: block; font-size: 11px; opacity: 0.7; margin: 8px 0 3px; }
 
-  .status.ready {
-    background: var(--vscode-inputValidation-warningBackground, #352a05);
-    border-color: var(--vscode-inputValidation-warningBorder, #b89500);
-    color: var(--vscode-foreground);
-  }
+select {
+  width: 100%;
+  padding: 4px 6px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border, #3c3c3c);
+  border-radius: 2px;
+  font-size: 12px;
+  font-family: inherit;
+}
 
-  label {
-    display: block;
-    font-size: 11px;
-    opacity: 0.75;
-    margin-bottom: 3px;
-    margin-top: 8px;
-  }
+#analyzeBtn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 7px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  border-radius: 2px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 500;
+}
+#analyzeBtn:hover:not(:disabled) { background: var(--vscode-button-hoverBackground); }
+#analyzeBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  select {
-    width: 100%;
-    padding: 4px 6px;
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border, #3c3c3c);
-    border-radius: 2px;
-    font-size: 12px;
-    font-family: inherit;
-  }
+#spinner { font-size: 11px; opacity: 0.6; margin-top: 8px; display: none; text-align: center; }
 
-  #analyzeBtn {
-    width: 100%;
-    margin-top: 12px;
-    padding: 7px;
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-    border: none;
-    border-radius: 2px;
-    font-size: 12px;
-    font-family: inherit;
-    cursor: pointer;
-    font-weight: 500;
-  }
+.clear-btn {
+  font-size: 10px; opacity: 0.5; cursor: pointer; float: right;
+  margin-top: 12px; background: none; border: none; color: inherit;
+  text-decoration: underline; display: none;
+}
+.clear-btn:hover { opacity: 1; }
 
-  #analyzeBtn:hover:not(:disabled) {
-    background: var(--vscode-button-hoverBackground);
-  }
+/* ── Result card ── */
+#result {
+  margin-top: 14px;
+  display: none;
+  font-size: 12px;
+}
 
-  #analyzeBtn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
+.section {
+  margin-bottom: 10px;
+}
 
-  #spinner {
-    font-size: 11px;
-    opacity: 0.65;
-    margin-top: 8px;
-    display: none;
-    text-align: center;
-  }
+.section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  opacity: 0.55;
+  margin-bottom: 5px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+}
 
-  #output {
-    margin-top: 12px;
-    font-family: var(--vscode-editor-font-family, monospace);
-    font-size: 11px;
-    white-space: pre-wrap;
-    word-break: break-word;
-    background: var(--vscode-editor-background);
-    border: 1px solid var(--vscode-panel-border, #3c3c3c);
-    padding: 8px;
-    border-radius: 2px;
-    max-height: 450px;
-    overflow-y: auto;
-    display: none;
-  }
+.fn-item {
+  padding: 2px 0 2px 10px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+  color: var(--vscode-symbolIcon-functionForeground, #dcdcaa);
+}
 
-  .clear-btn {
-    font-size: 10px;
-    opacity: 0.6;
-    cursor: pointer;
-    float: right;
-    margin-top: 12px;
-    background: none;
-    border: none;
-    color: inherit;
-    text-decoration: underline;
-    display: none;
-  }
+.bug-item {
+  padding: 3px 0 3px 10px;
+  font-size: 11px;
+  color: var(--vscode-errorForeground, #f48771);
+  border-left: 2px solid var(--vscode-errorForeground, #f48771);
+  margin: 2px 0;
+}
 
-  .clear-btn:hover { opacity: 1; }
+.concerns {
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.9;
+  padding: 6px 8px;
+  background: var(--vscode-editor-background);
+  border-radius: 3px;
+  border-left: 3px solid var(--vscode-panel-border, #3c3c3c);
+}
+
+.severity {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+.sev-low      { background: #1e3a1e; color: #89d185; }
+.sev-medium   { background: #3a2e05; color: #cca700; }
+.sev-high     { background: #3a1a05; color: #f48771; }
+.sev-critical { background: #3a0505; color: #ff6b6b; }
+.sev-unknown  { background: #2a2a2a; color: #aaa; }
+
+.tool-call {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 10px;
+  opacity: 0.5;
+  padding: 1px 0 1px 10px;
+}
+
+/* ── Raw log (during streaming) ── */
+#log {
+  margin-top: 12px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 10px;
+  opacity: 0.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 120px;
+  overflow-y: auto;
+  display: none;
+  padding: 4px;
+  border-left: 2px solid var(--vscode-panel-border, #3c3c3c);
+}
+
+.error-box {
+  margin-top: 10px;
+  padding: 8px;
+  font-size: 11px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--vscode-inputValidation-errorBackground, #3a0505);
+  border-left: 3px solid var(--vscode-errorForeground, #f48771);
+  border-radius: 2px;
+  display: none;
+}
 </style>
 </head>
 <body>
@@ -328,75 +371,185 @@ function getWebviewHtml() {
 </select>
 
 <button id="analyzeBtn" disabled>Analyze Impact</button>
-
 <div id="spinner">Running analysis...</div>
 
-<button class="clear-btn" id="clearBtn">clear output</button>
-<div id="output"></div>
+<div id="log"></div>
+<div id="result"></div>
+<div id="errorBox" class="error-box"></div>
+
+<button class="clear-btn" id="clearBtn">clear</button>
 
 <script>
-  const vscode = acquireVsCodeApi();
-  const btn     = document.getElementById('analyzeBtn');
-  const output  = document.getElementById('output');
-  const status  = document.getElementById('status');
-  const spinner = document.getElementById('spinner');
-  const clearBtn = document.getElementById('clearBtn');
-  let hasChanges = false;
+const vscode   = acquireVsCodeApi();
+const btn      = document.getElementById('analyzeBtn');
+const status   = document.getElementById('status');
+const spinner  = document.getElementById('spinner');
+const log      = document.getElementById('log');
+const result   = document.getElementById('result');
+const errorBox = document.getElementById('errorBox');
+const clearBtn = document.getElementById('clearBtn');
+let hasChanges = false;
+let rawLines   = [];
 
-  btn.addEventListener('click', () => {
-    const model    = document.getElementById('model').value;
-    const approach = document.getElementById('approach').value;
-    output.style.display = 'block';
-    output.textContent   = '';
-    clearBtn.style.display = 'none';
-    spinner.style.display  = 'block';
-    btn.disabled = true;
-    vscode.postMessage({ type: 'analyze', model, approach });
-  });
+btn.addEventListener('click', () => {
+  const model    = document.getElementById('model').value;
+  const approach = document.getElementById('approach').value;
+  rawLines = [];
+  log.textContent = '';
+  log.style.display = 'block';
+  result.style.display = 'none';
+  result.innerHTML = '';
+  errorBox.style.display = 'none';
+  clearBtn.style.display = 'none';
+  spinner.style.display = 'block';
+  btn.disabled = true;
+  vscode.postMessage({ type: 'analyze', model, approach });
+});
 
-  clearBtn.addEventListener('click', () => {
-    output.textContent = '';
-    output.style.display = 'none';
-    clearBtn.style.display = 'none';
-  });
+clearBtn.addEventListener('click', () => {
+  log.style.display = 'none';
+  result.style.display = 'none';
+  errorBox.style.display = 'none';
+  clearBtn.style.display = 'none';
+  rawLines = [];
+});
 
-  window.addEventListener('message', event => {
-    const msg = event.data;
+window.addEventListener('message', event => {
+  const msg = event.data;
 
-    if (msg.type === 'status') {
-      hasChanges = msg.hasChanges;
-      if (msg.hasChanges) {
-        const fileList = msg.files.slice(0, 3).join(', ') +
-                         (msg.files.length > 3 ? \` +\${msg.files.length - 3} more\` : '');
-        status.textContent  = 'Changes detected: ' + fileList;
-        status.className    = 'status ready';
-        btn.disabled        = false;
-      } else {
-        status.textContent = 'No uncommitted changes in .c/.h files';
-        status.className   = 'status idle';
-        btn.disabled       = true;
-      }
+  if (msg.type === 'status') {
+    hasChanges = msg.hasChanges;
+    if (msg.hasChanges) {
+      const names = msg.files.slice(0, 3).join(', ') +
+                    (msg.files.length > 3 ? \` +\${msg.files.length - 3} more\` : '');
+      status.textContent = 'Changes: ' + names;
+      status.className   = 'status ready';
+      if (!spinner.style.display || spinner.style.display === 'none') btn.disabled = false;
+    } else {
+      status.textContent = 'No uncommitted changes in .c/.h files';
+      status.className   = 'status idle';
+      btn.disabled = true;
     }
+  }
 
-    else if (msg.type === 'output') {
-      output.textContent += msg.line + '\\n';
-      output.scrollTop    = output.scrollHeight;
+  else if (msg.type === 'output') {
+    rawLines.push(msg.line);
+    // Show agent tool calls in the small log during streaming
+    if (msg.line.includes('[agent]')) {
+      log.textContent += msg.line.trim() + '\\n';
+      log.scrollTop = log.scrollHeight;
     }
+  }
 
-    else if (msg.type === 'done') {
-      spinner.style.display  = 'none';
-      btn.disabled           = !hasChanges;
-      clearBtn.style.display = 'inline';
-    }
+  else if (msg.type === 'done') {
+    spinner.style.display = 'none';
+    btn.disabled = !hasChanges;
+    clearBtn.style.display = 'inline';
+    log.style.display = 'none';
+    renderResult(rawLines);
+  }
 
-    else if (msg.type === 'error') {
-      spinner.style.display = 'none';
-      output.style.display  = 'block';
-      output.textContent   += '\\nERROR: ' + msg.message;
-      btn.disabled          = !hasChanges;
-      clearBtn.style.display = 'inline';
+  else if (msg.type === 'error') {
+    spinner.style.display = 'none';
+    btn.disabled = !hasChanges;
+    clearBtn.style.display = 'inline';
+    errorBox.textContent = msg.message;
+    errorBox.style.display = 'block';
+  }
+});
+
+// ── Parser: turn raw graphguard output lines into structured cards ──────────
+
+function renderResult(lines) {
+  const text = lines.join('\\n');
+
+  // Pull out fields using the known output format
+  const severity   = extract(text, /Severity\\s*:\\s*(\\S+)/i);
+  const model      = extract(text, /Model\\s*:\\s*(.+)/i);
+  const approach   = extract(text, /Approach\\s*:\\s*(.+)/i);
+  const concerns   = extractBlock(lines, 'SUMMARY');
+  const changed    = extractList(lines, 'FUNCTIONS DIRECTLY MODIFIED');
+  const affected   = extractList(lines, 'WHAT WILL BE AFFECTED');
+  const bugs       = extractList(lines, 'BUGS / RISKS INTRODUCED');
+  const tools      = extractList(lines, 'TOOLS CALLED BY AGENT');
+
+  if (!severity && !concerns && changed.length === 0) {
+    // Couldn't parse — show raw
+    result.innerHTML = '<div class="section"><div class="section-title">Output</div><pre style="font-size:11px;white-space:pre-wrap;word-break:break-word;opacity:.8">' + esc(text) + '</pre></div>';
+    result.style.display = 'block';
+    return;
+  }
+
+  let html = '';
+
+  if (severity) {
+    const cls = 'sev-' + severity.toLowerCase().replace(/[\\[\\]]/g, '');
+    html += \`<span class="severity \${cls}">\${severity.replace(/[\\[\\]]/g, '')}</span>\`;
+  }
+  if (model && approach) {
+    html += \`<div style="font-size:10px;opacity:.5;margin-bottom:10px">\${esc(model.trim())} — \${esc(approach.trim())}</div>\`;
+  }
+
+  if (changed.length) {
+    html += section('Functions Modified', changed.map(f => \`<div class="fn-item">\${esc(f)}</div>\`).join(''));
+  }
+  if (affected.length) {
+    html += section('What Will Be Affected', affected.map(f => \`<div class="fn-item">\${esc(f)}</div>\`).join(''));
+  }
+  if (bugs.length) {
+    html += section('Bugs / Risks', bugs.map(b => \`<div class="bug-item">\${esc(b)}</div>\`).join(''));
+  }
+  if (concerns) {
+    html += section('Summary', \`<div class="concerns">\${esc(concerns)}</div>\`);
+  }
+  if (tools.length) {
+    html += section('Agent Tools Called', tools.map((t,i) => \`<div class="tool-call">\${i+1}. \${esc(t)}</div>\`).join(''));
+  }
+
+  result.innerHTML = html;
+  result.style.display = 'block';
+}
+
+function section(title, body) {
+  return \`<div class="section"><div class="section-title">\${title}</div>\${body}</div>\`;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function extract(text, re) {
+  const m = text.match(re);
+  return m ? m[1].trim() : null;
+}
+
+function extractBlock(lines, header) {
+  let capture = false;
+  const out = [];
+  for (const line of lines) {
+    if (line.includes(header)) { capture = true; continue; }
+    if (capture) {
+      if (line.match(/^[\\s]*[-=]{4,}/) || line.match(/^\\s{2,}[A-Z ]{4,}$/)) break;
+      const t = line.trim();
+      if (t) out.push(t);
     }
-  });
+  }
+  return out.join(' ').trim() || null;
+}
+
+function extractList(lines, header) {
+  let capture = false;
+  const items = [];
+  for (const line of lines) {
+    if (line.includes(header)) { capture = true; continue; }
+    if (capture) {
+      if (line.match(/^\\s*[=]{4,}/) || (line.match(/^\\s{2,}[A-Z ]{4,}$/) && !line.includes('-'))) break;
+      const t = line.replace(/^\\s*[-!\\d.]+\\s*/, '').trim();
+      if (t && !t.match(/^[-=]{3,}/)) items.push(t);
+    }
+  }
+  return items;
+}
 </script>
 
 </body>
