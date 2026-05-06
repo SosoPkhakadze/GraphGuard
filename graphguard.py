@@ -241,6 +241,14 @@ def extract_changed_c_files(diff_text: str, git_root: str) -> list[str]:
     return files
 
 
+def get_cache_path(changed_files: list[str]) -> str:
+    """Return the .graphguard_cache.json path for the project that owns changed_files."""
+    root = os.path.dirname(os.path.abspath(changed_files[0]))
+    if os.path.basename(root).lower() in ("src", "source", "lib", "libs"):
+        root = os.path.dirname(root)
+    return os.path.join(root, ".graphguard_cache.json")
+
+
 def find_project_c_files(changed_files: list[str]) -> list[str]:
     """
     Given a list of changed .c files, locate the "project root" for each
@@ -324,39 +332,55 @@ def cmd_analyze(args, cfg):
     print(f"\n  Detected change(s) in: {rel_changed}")
 
     print("  Building call graph...", end=" ", flush=True)
-    cg = CallGraph()
-    cg.build(all_c_files) if all_c_files else None
+    cache_path = get_cache_path(scope_files) if scope_files else None
+    cg = CallGraph.load(cache_path, all_c_files) if (cache_path and all_c_files) else None
+    if cg:
+        print(f"done  ({len(all_c_files)} file(s), from cache)")
+    elif all_c_files:
+        cg = CallGraph()
+        cg.build(all_c_files)
+        if cache_path:
+            cg.save(cache_path)
+        print(f"done  ({len(all_c_files)} file(s) parsed, cache saved)")
+    else:
+        cg = CallGraph()
+        print("done  (no .c files found)")
     file_to_lines = parse_diff(diff_text, repo_root=git_root)
     changed_fns   = ImpactAnalyzer(cg).find_changed_functions(file_to_lines) if all_c_files else set()
-    print(f"done  ({len(all_c_files)} file(s) parsed)")
 
     if changed_fns:
         print(f"  Functions directly modified: {sorted(changed_fns)}")
     else:
         print("  No function bodies matched (header-only or declaration change).")
 
-    # ── Step 3: ask model ─────────────────────────────────────────────────────
-    chosen_model_key = ask_choice(
-        "Which AI model would you like to use?",
-        [
-            ("gpt-4o",            "GPT-4o          (OpenAI)"),
-            ("gpt-4o-mini",       "GPT-4o mini     (OpenAI, faster)"),
-            ("claude-sonnet-4-6", "Claude Sonnet 4.6  (Anthropic)"),
-            ("claude-opus-4-7",   "Claude Opus 4.7    (Anthropic, most capable)"),
-            ("claude-haiku-4-5-20251001", "Claude Haiku 4.5   (Anthropic, fastest)"),
-        ]
-    )
+    # ── Step 3: ask model (or use --model flag) ───────────────────────────────
+    if getattr(args, "model", None):
+        chosen_model_key = resolve_model(args.model)
+    else:
+        chosen_model_key = ask_choice(
+            "Which AI model would you like to use?",
+            [
+                ("gpt-4o",            "GPT-4o          (OpenAI)"),
+                ("gpt-4o-mini",       "GPT-4o mini     (OpenAI, faster)"),
+                ("claude-sonnet-4-6", "Claude Sonnet 4.6  (Anthropic)"),
+                ("claude-opus-4-7",   "Claude Opus 4.7    (Anthropic, most capable)"),
+                ("claude-haiku-4-5-20251001", "Claude Haiku 4.5   (Anthropic, fastest)"),
+            ]
+        )
     client, provider = get_api_client(chosen_model_key, cfg, args)
 
-    # ── Step 4: ask approach ──────────────────────────────────────────────────
-    approach = ask_choice(
-        "Which analysis approach?",
-        [
-            ("diff",  "Diff only          — AI sees only the code change"),
-            ("graph", "Diff + Call Graph  — AI also sees which functions call which"),
-            ("agent", "Agent              — AI retrieves context iteratively (Claude only)"),
-        ]
-    )
+    # ── Step 4: ask approach (or use --approach flag) ─────────────────────────
+    if getattr(args, "approach", None):
+        approach = args.approach
+    else:
+        approach = ask_choice(
+            "Which analysis approach?",
+            [
+                ("diff",  "Diff only          — AI sees only the code change"),
+                ("graph", "Diff + Call Graph  — AI also sees which functions call which"),
+                ("agent", "Agent              — AI retrieves context iteratively (Claude only)"),
+            ]
+        )
 
     if approach == "agent" and provider != "anthropic":
         print("\n  Agent mode requires a Claude model. Switching to claude-sonnet-4-6.")
@@ -954,6 +978,10 @@ batch examples:
     p_analyze.add_argument("--api-key", help="Override API key for this run")
     p_analyze.add_argument("--diff", dest="diff_file",
                            help="Use a specific diff file instead of git diff")
+    p_analyze.add_argument("--model", "-m", default=None,
+                           help="Skip model menu (gpt, claude, claude-opus, claude-haiku)")
+    p_analyze.add_argument("--approach", choices=["diff", "graph", "agent"], default=None,
+                           help="Skip approach menu (diff, graph, agent)")
 
     # batch
     p_batch = sub.add_parser("batch", help="Evaluate a batch directory (thesis mode)")

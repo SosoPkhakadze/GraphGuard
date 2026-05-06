@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 *.pyo
 graphguard_analysis.txt
+.graphguard_cache.json

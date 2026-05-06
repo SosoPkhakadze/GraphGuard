@@ -1,6 +1,7 @@
 import clang.cindex
 from clang.cindex import Index, CursorKind
 import os
+import json
 
 clang.cindex.Config.set_library_file(
     r"C:\Program Files\LLVM\bin\libclang.dll"
@@ -27,6 +28,58 @@ class CallGraph:
             if path == norm and start <= line <= end:
                 return fn
         return None
+
+    def save(self, cache_path: str):
+        """Serialize the call graph to JSON, recording file mtimes for cache validation."""
+        files = {}
+        for (path, _, _, _) in self._fn_extents:
+            try:
+                files[path] = os.path.getmtime(path)
+            except OSError:
+                pass
+        data = {
+            "version": 1,
+            "files": files,
+            "graph": {k: sorted(v) for k, v in self.graph.items()},
+            "reverse_graph": {k: sorted(v) for k, v in self.reverse_graph.items()},
+            "defined_functions": sorted(self.defined_functions),
+            "fn_extents": [[p, s, e, fn] for (p, s, e, fn) in self._fn_extents],
+        }
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+
+    @classmethod
+    def load(cls, cache_path: str, file_paths: list) -> "CallGraph | None":
+        """
+        Load from cache if it exists and all source files are unchanged.
+        Returns None if cache is missing, stale, or corrupt.
+        """
+        if not os.path.isfile(cache_path):
+            return None
+        try:
+            with open(cache_path, encoding="utf-8") as f:
+                data = json.load(f)
+            if data.get("version") != 1:
+                return None
+
+            norm_input = {os.path.normcase(os.path.abspath(p)) for p in file_paths}
+            cached_files = {os.path.normcase(k): v for k, v in data["files"].items()}
+
+            if set(cached_files.keys()) != norm_input:
+                return None
+
+            for path, mtime in cached_files.items():
+                if abs(os.path.getmtime(path) - mtime) > 0.001:
+                    return None
+
+            cg = cls()
+            cg.graph            = {k: set(v) for k, v in data["graph"].items()}
+            cg.reverse_graph    = {k: set(v) for k, v in data["reverse_graph"].items()}
+            cg.defined_functions = set(data["defined_functions"])
+            cg._fn_extents      = [(p, s, e, fn) for [p, s, e, fn] in data["fn_extents"]]
+            return cg
+        except (json.JSONDecodeError, KeyError, OSError, ValueError):
+            return None
 
     def add_call(self, caller, callee):
         if caller and callee and callee in self.defined_functions:
