@@ -3,6 +3,11 @@
   "displayName": "GraphGuard",
   "description": "AI-powered C code impact analyzer — traces call graph impact of uncommitted changes",
   "version": "0.1.0",
+  "publisher": "graphguard",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/soso-pkhakadze/GraphGuard"
+  },
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Other"],
   "activationEvents": ["workspaceContains:**/*.c"],
@@ -45,11 +50,13 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
+    "package": "vsce package",
     "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0",
     "typescript": "^5.3.0"
   }
 }
