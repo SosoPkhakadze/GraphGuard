@@ -493,7 +493,7 @@ def cmd_analyze(args, cfg):
 # ── Per-project processing (for batch/thesis mode) ────────────────────────────
 
 def process_project(project_dir: str, client, provider: str, model: str,
-                    out_suffix: str = "") -> dict | None:
+                    out_suffix: str = "", run_agent_eval: bool = False) -> dict | None:
     name      = os.path.basename(project_dir)
     src_dir   = os.path.join(project_dir, "src")
     diff_file = os.path.join(project_dir, "diff.txt")
@@ -544,9 +544,27 @@ def process_project(project_dir: str, client, provider: str, model: str,
     m1 = compute_metrics(predicted_set(r1), gt_pos, all_fns)
     m2 = compute_metrics(predicted_set(r2), gt_pos, all_fns)
 
-    winner = ("Friend 2 (diff+graph)" if m2["F1"] > m1["F1"]
-              else "Friend 1 (diff only)" if m1["F1"] > m2["F1"]
-              else "Tie")
+    # ── Friend 3 (agent) — Anthropic only, opt-in ─────────────────────────────
+    m3 = r3 = None
+    if run_agent_eval:
+        if provider != "anthropic":
+            print(f"  [{name}] Friend 3 skipped — agent requires an Anthropic model.")
+        else:
+            print(f"  [{name}] Querying {model_label} (Friend 3 / Agent)...")
+            raw3 = run_agent(diff_text, changed_fns, cg, c_files, client, model)
+            r3   = raw3
+            m3   = compute_metrics(predicted_set(raw3), gt_pos, all_fns)
+
+    scores = [m1["F1"], m2["F1"]] + ([m3["F1"]] if m3 else [])
+    best   = max(scores)
+    if m3 and m3["F1"] == best and m3["F1"] > m2["F1"]:
+        winner = "Friend 3 (agent)"
+    elif m2["F1"] == best and m2["F1"] > m1["F1"]:
+        winner = "Friend 2 (diff+graph)"
+    elif m1["F1"] == best and m1["F1"] > m2["F1"]:
+        winner = "Friend 1 (diff only)"
+    else:
+        winner = "Tie"
 
     div  = "=" * 72
     div2 = "-" * 72
@@ -573,42 +591,67 @@ def process_project(project_dir: str, client, provider: str, model: str,
     ]
     if m2["FP_fns"]: lines.append(f"  False alarms : {m2['FP_fns']}")
     if m2["FN_fns"]: lines.append(f"  Missed       : {m2['FN_fns']}")
+
+    if m3 and r3:
+        tool_log = r3.get("_tool_log", [])
+        lines += [
+            "", div2, "FRIEND 3  (agent — iterative tool calls)", div2,
+            f"  Tools called   : {', '.join(tool_log) if tool_log else '(none recorded)'}",
+            f"  Predicted changed  : {sorted(r3.get('changed_functions', []))}",
+            f"  Predicted affected : {sorted(r3.get('affected_functions', []))}",
+            f"  Concerns : {r3.get('concerns', '')}",
+            metrics_line(m3),
+        ]
+        if m3["FP_fns"]: lines.append(f"  False alarms : {m3['FP_fns']}")
+        if m3["FN_fns"]: lines.append(f"  Missed       : {m3['FN_fns']}")
+        f3_summary = f"    Friend 3 F1 = {m3['F1']:.3f}"
+    else:
+        f3_summary = ""
+
     lines += [
         "", div, f"WINNER : {winner}",
-        f"  Friend 1 F1 = {m1['F1']:.3f}    Friend 2 F1 = {m2['F1']:.3f}",
+        f"  Friend 1 F1 = {m1['F1']:.3f}    Friend 2 F1 = {m2['F1']:.3f}{f3_summary}",
         div, "",
     ]
 
     with open(eval_file, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
+    f3_str = f"  F3={m3['F1']:.3f}" if m3 else ""
     print(f"  [{name}] {os.path.basename(eval_file)} written "
-          f"(F1: F1={m1['F1']:.3f}  F2={m2['F1']:.3f}  Winner: {winner})")
-    return {"project": name, "friend1": m1, "friend2": m2}
+          f"(F1={m1['F1']:.3f}  F2={m2['F1']:.3f}{f3_str}  Winner: {winner})")
+    result = {"project": name, "friend1": m1, "friend2": m2}
+    if m3:
+        result["friend3"] = m3
+    return result
 
 
 # ── Batch results writer ───────────────────────────────────────────────────────
 
 def write_batch_results(results: list, batch_dir: str, model: str,
                         batch_label: str = "", out_suffix: str = ""):
-    valid  = [r for r in results if r]
-    COL    = 24
-    header = (f"{'Project':<{COL}} | {'Approach':<22} | "
-              f"{'TP':>4} {'TN':>4} {'FP':>4} {'FN':>4} | "
-              f"{'Prec':>6} {'Rec':>6} {'F1':>6} {'Acc':>6}")
-    sep    = "-" * len(header)
-    lines  = [
+    valid      = [r for r in results if r]
+    has_agent  = any("friend3" in r for r in valid)
+    COL        = 24
+    header     = (f"{'Project':<{COL}} | {'Approach':<22} | "
+                  f"{'TP':>4} {'TN':>4} {'FP':>4} {'FN':>4} | "
+                  f"{'Prec':>6} {'Rec':>6} {'F1':>6} {'Acc':>6}")
+    sep        = "-" * len(header)
+    lines      = [
         f"Batch : {batch_label or os.path.basename(batch_dir)}",
         f"Model : {model}",
         f"Projects evaluated : {len(valid)}/{len(results)}",
         "", header, sep,
     ]
-    f1_list, f2_list = [], []
+    f1_list, f2_list, f3_list = [], [], []
     for r in valid:
-        for label, m, lst in [
+        rows = [
             ("Friend 1 (diff only)",  r["friend1"], f1_list),
             ("Friend 2 (diff+graph)", r["friend2"], f2_list),
-        ]:
+        ]
+        if "friend3" in r:
+            rows.append(("Friend 3 (agent)", r["friend3"], f3_list))
+        for label, m, lst in rows:
             lst.append(m["F1"])
             lines.append(
                 f"{r['project']:<{COL}} | {label:<22} | "
@@ -619,15 +662,20 @@ def write_batch_results(results: list, batch_dir: str, model: str,
         lines.append(sep)
 
     def avg(lst): return sum(lst) / len(lst) if lst else 0.0
-    delta = avg(f2_list) - avg(f1_list)
-    sign  = "+" if delta >= 0 else ""
+    d12  = avg(f2_list) - avg(f1_list)
     lines += [
         "",
         f"{'Avg F1  Friend 1 (diff only)   :':<42} {avg(f1_list):.3f}",
         f"{'Avg F1  Friend 2 (diff+graph)  :':<42} {avg(f2_list):.3f}",
-        f"{'Delta (Friend 2 - Friend 1)    :':<42} {sign}{delta:.3f}",
-        "",
+        f"{'Delta (Friend 2 - Friend 1)    :':<42} {'+' if d12>=0 else ''}{d12:.3f}",
     ]
+    if has_agent and f3_list:
+        d23 = avg(f3_list) - avg(f2_list)
+        lines += [
+            f"{'Avg F1  Friend 3 (agent)       :':<42} {avg(f3_list):.3f}",
+            f"{'Delta (Friend 3 - Friend 2)    :':<42} {'+' if d23>=0 else ''}{d23:.3f}",
+        ]
+    lines.append("")
     out_path = os.path.join(batch_dir, f"batch_results{out_suffix}.txt")
     with open(out_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
@@ -642,6 +690,10 @@ def cmd_batch(args, cfg):
     model    = resolve_model(args.model)
     client, provider = get_api_client(model, cfg, args)
     out_suffix = "" if provider == "openai" else f"_{provider}"
+    run_agent_eval = getattr(args, "agent", False)
+
+    if run_agent_eval and provider != "anthropic":
+        print("WARNING: --agent requires an Anthropic model. Friend 3 will be skipped per project.")
 
     batch_dir = os.path.abspath(args.batch_dir)
     if not os.path.isdir(batch_dir):
@@ -661,7 +713,7 @@ def cmd_batch(args, cfg):
     results = []
     for pdir in projects:
         try:
-            results.append(process_project(pdir, client, provider, model, out_suffix))
+            results.append(process_project(pdir, client, provider, model, out_suffix, run_agent_eval))
         except Exception as e:
             print(f"  [{os.path.basename(pdir)}] ERROR: {e}")
             results.append(None)
@@ -676,22 +728,21 @@ def _parse_eval_file(path: str) -> dict | None:
         return None
     with open(path, encoding="utf-8") as f:
         text = f.read()
-    f1_1 = f1_2 = None
+    vals: list[float] = []
     for line in text.splitlines():
         line = line.strip()
         if "F1=" in line and "TP=" in line:
             parts = {p.split("=")[0].strip(): p.split("=")[1].strip()
                      for p in line.split() if "=" in p}
-            val = float(parts.get("F1", 0))
-            if f1_1 is None:
-                f1_1 = val
-            else:
-                f1_2 = val
+            vals.append(float(parts.get("F1", 0)))
         if "WINNER" in line:
             break
-    if f1_1 is None or f1_2 is None:
+    if len(vals) < 2:
         return None
-    return {"f1": f1_1, "f2": f1_2}
+    result = {"f1": vals[0], "f2": vals[1]}
+    if len(vals) >= 3:
+        result["f3"] = vals[2]
+    return result
 
 
 def cmd_summary(args, cfg):
@@ -708,76 +759,99 @@ def cmd_summary(args, cfg):
                 continue
             data = _parse_eval_file(os.path.join(proj_dir, "evaluation.txt"))
             if data:
-                rows.append({"batch": label, "project": os.path.basename(proj_dir),
-                             "f1_f1": data["f1"], "f2_f1": data["f2"]})
+                row = {"batch": label, "project": os.path.basename(proj_dir),
+                       "f1_f1": data["f1"], "f2_f1": data["f2"]}
+                if "f3" in data:
+                    row["f3_f1"] = data["f3"]
+                rows.append(row)
         if not rows:
             print(f"  Skipping {label} (no evaluation.txt files)")
             continue
         all_rows.extend(rows)
         avg1 = sum(r["f1_f1"] for r in rows) / len(rows)
         avg2 = sum(r["f2_f1"] for r in rows) / len(rows)
-        batch_summaries.append({"batch": label, "n": len(rows),
-                                 "avg_f1": avg1, "avg_f2": avg2})
+        bs   = {"batch": label, "n": len(rows), "avg_f1": avg1, "avg_f2": avg2}
+        f3_rows = [r for r in rows if "f3_f1" in r]
+        if f3_rows:
+            bs["avg_f3"] = sum(r["f3_f1"] for r in f3_rows) / len(f3_rows)
+        batch_summaries.append(bs)
 
     if not all_rows:
         print("No evaluation data found. Run 'batch' on each batch first.")
         return
 
-    COL = 24
+    has_f3 = any("f3_f1" in r for r in all_rows)
+    COL    = 24
+    f3_col = f" {'F1 Friend3':>10}" if has_f3 else ""
     header = (f"{'Batch':<14} {'Project':<{COL}} | "
-              f"{'F1 Friend1':>10} {'F1 Friend2':>10} | {'Winner':<22}")
+              f"{'F1 Friend1':>10} {'F1 Friend2':>10}{f3_col} | {'Winner':<22}")
     sep = "-" * len(header)
     lines = [
-        "=" * len(header), "CROSS-BATCH SUMMARY (GPT-4o)", "=" * len(header),
+        "=" * len(header), "CROSS-BATCH SUMMARY", "=" * len(header),
         "", header, sep,
     ]
 
     prev_batch = None
-    win1 = win2 = ties = 0
+    win1 = win2 = win3 = ties = 0
     for r in all_rows:
         if r["batch"] != prev_batch:
             if prev_batch is not None:
                 lines.append(sep)
             prev_batch = r["batch"]
-        winner = ("Friend2" if r["f2_f1"] > r["f1_f1"]
-                  else "Friend1" if r["f1_f1"] > r["f2_f1"]
-                  else "Tie")
-        if winner == "Friend2":   win2 += 1
+        scores = {"Friend1": r["f1_f1"], "Friend2": r["f2_f1"]}
+        if "f3_f1" in r:
+            scores["Friend3"] = r["f3_f1"]
+        best_score = max(scores.values())
+        winners    = [k for k, v in scores.items() if v == best_score]
+        winner     = winners[0] if len(winners) == 1 else "Tie"
+        if winner == "Friend3": win3 += 1
+        elif winner == "Friend2": win2 += 1
         elif winner == "Friend1": win1 += 1
-        else:                     ties += 1
+        else: ties += 1
+        f3_val = f" {r['f3_f1']:>10.3f}" if has_f3 else ""
         lines.append(
             f"{r['batch']:<14} {r['project']:<{COL}} | "
-            f"{r['f1_f1']:>10.3f} {r['f2_f1']:>10.3f} | {winner:<22}"
+            f"{r['f1_f1']:>10.3f} {r['f2_f1']:>10.3f}{f3_val} | {winner:<22}"
         )
     lines.append(sep)
 
     lines += ["", "PER-BATCH AVERAGES", sep]
     for bs in batch_summaries:
         delta = bs["avg_f2"] - bs["avg_f1"]
-        sign  = "+" if delta >= 0 else ""
+        f3_part = (f"  Friend3={bs['avg_f3']:.3f}  "
+                   f"Delta(F3-F2)={bs['avg_f3']-bs['avg_f2']:+.3f}"
+                   if "avg_f3" in bs else "")
         lines.append(
             f"{bs['batch']:<14} n={bs['n']:<4} "
-            f"Avg F1 Friend1={bs['avg_f1']:.3f}  "
-            f"Friend2={bs['avg_f2']:.3f}  "
-            f"Delta={sign}{delta:.3f}"
+            f"Friend1={bs['avg_f1']:.3f}  Friend2={bs['avg_f2']:.3f}  "
+            f"Delta(F2-F1)={delta:+.3f}{f3_part}"
         )
     lines.append(sep)
 
     total = len(all_rows)
-    ov1 = sum(r["f1_f1"] for r in all_rows) / total
-    ov2 = sum(r["f2_f1"] for r in all_rows) / total
-    delta = ov2 - ov1
+    ov1   = sum(r["f1_f1"] for r in all_rows) / total
+    ov2   = sum(r["f2_f1"] for r in all_rows) / total
+    f3rows = [r for r in all_rows if "f3_f1" in r]
     lines += [
         "", f"OVERALL  ({total} projects across {len(batch_summaries)} batches)", sep,
         f"  Avg F1  Friend 1 (diff only)   : {ov1:.3f}",
         f"  Avg F1  Friend 2 (diff+graph)  : {ov2:.3f}",
-        f"  Delta  (Friend2 - Friend1)     : {'+' if delta>=0 else ''}{delta:.3f}",
+        f"  Delta  (Friend2 - Friend1)     : {ov2-ov1:+.3f}",
+    ]
+    if f3rows:
+        ov3 = sum(r["f3_f1"] for r in f3rows) / len(f3rows)
+        lines += [
+            f"  Avg F1  Friend 3 (agent)       : {ov3:.3f}  (n={len(f3rows)})",
+            f"  Delta  (Friend3 - Friend2)     : {ov3-ov2:+.3f}",
+        ]
+    lines += [
         "",
         f"  Friend2 wins : {win2}/{total}  ({100*win2/total:.1f}%)",
         f"  Friend1 wins : {win1}/{total}  ({100*win1/total:.1f}%)",
-        f"  Ties         : {ties}/{total}  ({100*ties/total:.1f}%)",
-        sep, "",
     ]
+    if has_f3:
+        lines.append(f"  Friend3 wins : {win3}/{total}  ({100*win3/total:.1f}%)")
+    lines += [f"  Ties         : {ties}/{total}  ({100*ties/total:.1f}%)", sep, ""]
 
     out_path = os.path.join(ROOT, "reports", "all_batches_summary.txt")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
@@ -988,6 +1062,8 @@ batch examples:
     p_batch.add_argument("batch_dir", help="Path to batch directory")
     p_batch.add_argument("--model", "-m", default="gpt", help="Model (default: gpt)")
     p_batch.add_argument("--api-key", help="Override API key for this run")
+    p_batch.add_argument("--agent", action="store_true",
+                         help="Also run Friend 3 (agent) evaluation — Anthropic models only")
 
     # summary
     sub.add_parser("summary", help="Regenerate cross-batch GPT summary")
