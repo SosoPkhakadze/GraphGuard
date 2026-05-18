@@ -43,6 +43,11 @@
           "type": "string",
           "default": "",
           "description": "Path to graphguard.py. Leave empty to auto-detect from extension location."
+        },
+        "graphguard.libclangPath": {
+          "type": "string",
+          "default": "",
+          "description": "Full path to libclang.dll (Windows) or libclang.so/dylib. Overrides LIBCLANG_PATH env var. Example: C:\\msys64\\ucrt64\\bin\\libclang.dll"
         }
       }
     }

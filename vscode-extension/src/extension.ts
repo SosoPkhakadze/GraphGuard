@@ -4,10 +4,53 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 export function activate(context: vscode.ExtensionContext) {
+    autoConfigureSettings(context.extensionUri);
     const provider = new GraphGuardViewProvider(context.extensionUri);
     context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider('graphguard.sidebar', provider)
+        vscode.window.registerWebviewViewProvider('graphguard.sidebar', provider, {
+            webviewOptions: { retainContextWhenHidden: true },
+        })
     );
+}
+
+function autoConfigureSettings(extensionUri: vscode.Uri) {
+    const cfg = vscode.workspace.getConfiguration('graphguard');
+
+    // Auto-detect libclang.dll on Windows if not set
+    if (!cfg.get<string>('libclangPath')) {
+        const candidates = [
+            String.raw`C:\msys64\ucrt64\bin\libclang.dll`,
+            String.raw`C:\msys64\mingw64\bin\libclang.dll`,
+            String.raw`C:\Program Files\LLVM\bin\libclang.dll`,
+            String.raw`C:\Program Files (x86)\LLVM\bin\libclang.dll`,
+        ];
+        const found = candidates.find(p => fs.existsSync(p));
+        if (found) {
+            cfg.update('libclangPath', found, vscode.ConfigurationTarget.Global);
+        }
+    }
+
+    // Auto-detect Python if not set
+    if (!cfg.get<string>('pythonPath')) {
+        const pythonCandidates = ['python', 'python3', 'py'];
+        for (const cmd of pythonCandidates) {
+            try {
+                const result = cp.spawnSync(cmd, ['--version'], { encoding: 'utf-8' });
+                if (result.status === 0) {
+                    cfg.update('pythonPath', cmd, vscode.ConfigurationTarget.Global);
+                    break;
+                }
+            } catch { /* try next */ }
+        }
+    }
+
+    // Auto-detect script path if not set
+    if (!cfg.get<string>('scriptPath')) {
+        const sibling = path.join(extensionUri.fsPath, '..', 'graphguard.py');
+        if (fs.existsSync(sibling)) {
+            cfg.update('scriptPath', sibling, vscode.ConfigurationTarget.Global);
+        }
+    }
 }
 
 export function deactivate() {}
@@ -120,14 +163,18 @@ class GraphGuardViewProvider implements vscode.WebviewViewProvider {
 
         this._running = true;
         const python = resolvePython();
+        const libclangPath =
+            vscode.workspace.getConfiguration('graphguard').get<string>('libclangPath') ||
+            process.env['LIBCLANG_PATH'] || '';
 
         const proc = cp.spawn(python, [script, 'analyze', '--model', model, '--approach', approach], {
             cwd: root,
-            env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
+            env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1', ...(libclangPath ? { LIBCLANG_PATH: libclangPath } : {}) },
         });
 
         proc.stdout.on('data', (data: Buffer) => {
-            for (const line of data.toString().split('\n')) {
+            for (const raw of data.toString().split('\n')) {
+                const line = raw.replace(/\r$/, '');
                 if (line.trim()) {
                     this._view?.webview.postMessage({ type: 'output', line });
                 }
@@ -135,7 +182,7 @@ class GraphGuardViewProvider implements vscode.WebviewViewProvider {
         });
 
         proc.stderr.on('data', (data: Buffer) => {
-            const text = data.toString().trim();
+            const text = data.toString().replace(/\r\n/g, '\n').trim();
             if (text) {
                 this._view?.webview.postMessage({ type: 'output', line: text });
             }
@@ -523,7 +570,7 @@ function extractBlock(lines, header) {
   for (const line of lines) {
     if (line.includes(header)) { capture = true; continue; }
     if (capture) {
-      if (line.match(/^[\\s]*[-=]{4,}/) || line.match(/^\\s{2,}[A-Z ]{4,}$/)) break;
+      if (line.match(/^[\\s]*[-=]{4,}/) || line.match(/^\\s{2,}[A-Z /]{4,}$/)) break;
       const t = line.trim();
       if (t) out.push(t);
     }
@@ -537,7 +584,7 @@ function extractList(lines, header) {
   for (const line of lines) {
     if (line.includes(header)) { capture = true; continue; }
     if (capture) {
-      if (line.match(/^\\s*[=]{4,}/) || (line.match(/^\\s{2,}[A-Z ]{4,}$/) && !line.includes('-'))) break;
+      if (line.match(/^\\s*[=]{4,}/) || (line.match(/^\\s{2,}[A-Z /]{4,}$/) && !line.includes('-'))) break;
       const t = line.replace(/^\\s*[-!\\d.]+\\s*/, '').trim();
       if (t && !t.match(/^[-=]{3,}/)) items.push(t);
     }
