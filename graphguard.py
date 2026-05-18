@@ -378,14 +378,9 @@ def cmd_analyze(args, cfg):
             [
                 ("diff",  "Diff only          — AI sees only the code change"),
                 ("graph", "Diff + Call Graph  — AI also sees which functions call which"),
-                ("agent", "Agent              — AI retrieves context iteratively (Claude only)"),
+                ("agent", "Agent              — AI retrieves context iteratively"),
             ]
         )
-
-    if approach == "agent" and provider != "anthropic":
-        print("\n  Agent mode requires a Claude model. Switching to claude-sonnet-4-6.")
-        chosen_model_key = "claude-sonnet-4-6"
-        client, provider = get_api_client(chosen_model_key, cfg, args)
 
     # ── Step 5: query ─────────────────────────────────────────────────────────
     cg_content = build_diff_with_graph(diff_text, cg, changed_fns)
@@ -400,7 +395,12 @@ def cmd_analyze(args, cfg):
         resp = query_model(cg_content, client, provider, chosen_model_key)
     else:
         print()  # newline before agent tool call log
-        resp = run_agent(diff_text, changed_fns, cg, all_c_files, client, chosen_model_key)
+        try:
+            resp = run_agent(diff_text, changed_fns, cg, all_c_files, client, chosen_model_key,
+                             provider=provider, cg_content=cg_content)
+        except RuntimeError as e:
+            print(f"\n  ERROR: {e}", flush=True)
+            return
     if approach != "agent":
         print("done")
 

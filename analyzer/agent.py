@@ -1,13 +1,18 @@
 import json
+import time
+import anthropic
 from .agent_tools import (find_callers, find_callees, get_call_chain,
                            read_function, read_header, search_code)
 
+MAX_TOOL_CALLS = 4
+
+# ── Tool schemas (Anthropic format) ──────────────────────────────────────────
 TOOL_SCHEMAS = [
     {
         "name": "find_callers",
         "description": (
             "Find all functions that directly call the given function. "
-            "Use this first for every changed function to trace upstream impact."
+            "Only use this if the pre-provided call graph is missing a function you need."
         ),
         "input_schema": {
             "type": "object",
@@ -21,7 +26,7 @@ TOOL_SCHEMAS = [
         "name": "find_callees",
         "description": (
             "Find all functions that the given function calls. "
-            "Use this to understand what a function depends on."
+            "Only use this if the pre-provided call graph is missing a function you need."
         ),
         "input_schema": {
             "type": "object",
@@ -35,7 +40,7 @@ TOOL_SCHEMAS = [
         "name": "get_call_chain",
         "description": (
             "Trace all callers recursively up to `depth` levels. "
-            "Returns a nested tree showing the full upstream impact chain."
+            "Only use this if the pre-provided call graph is insufficient."
         ),
         "input_schema": {
             "type": "object",
@@ -50,7 +55,8 @@ TOOL_SCHEMAS = [
         "name": "read_function",
         "description": (
             "Read the full source code of a function. "
-            "Use this to inspect #ifdef guards, ownership semantics, or subtle logic."
+            "Use this to inspect #ifdef guards, ownership semantics, or subtle logic "
+            "when you suspect a concrete bug or contract violation."
         ),
         "input_schema": {
             "type": "object",
@@ -93,7 +99,7 @@ TOOL_SCHEMAS = [
         "name": "submit_impact_report",
         "description": (
             "Submit your final impact analysis. "
-            "Call this when you have enough information. This ends the analysis."
+            "Call this as soon as you have enough information — aim for 1-2 tool calls before this."
         ),
         "input_schema": {
             "type": "object",
@@ -124,114 +130,275 @@ TOOL_SCHEMAS = [
     },
 ]
 
+# ── OpenAI format (auto-converted from Anthropic schemas) ─────────────────────
+TOOL_SCHEMAS_OPENAI = [
+    {
+        "type": "function",
+        "function": {
+            "name": t["name"],
+            "description": t["description"],
+            "parameters": t["input_schema"],
+        },
+    }
+    for t in TOOL_SCHEMAS
+]
+
 SYSTEM_PROMPT = """\
 You are a senior C software engineer performing code impact analysis.
-You have tools to explore a C project's call graph and source code.
+The diff and the FULL call graph are already provided in the user message.
 
 Your process:
-1. For each changed function, call find_callers to trace upstream impact.
-2. Call get_call_chain to see the full transitive caller tree.
-3. Call read_header if you suspect a contract violation (ownership, thread safety, etc.).
-4. Call search_code if you suspect function pointers, macros, or #ifdef guards.
-5. Call read_function to inspect implementation details when needed.
-6. When you have a complete picture, call submit_impact_report.
+1. Read the diff and call graph carefully — you already know which functions call which.
+2. Determine changed functions and all transitively affected callers from the call graph.
+3. Only call read_function if you suspect a concrete bug or contract violation that needs confirmation.
+4. Only call search_code if you see evidence of function pointers or macros in the diff.
+5. Call submit_impact_report immediately once you have identified the impact.
 
-Be thorough but efficient — only call tools when you need information you don't yet have.
+Be fast and decisive. You should submit after 0-2 tool calls in most cases.
 Your final action must always be submit_impact_report."""
 
 
-def run_agent(diff_text: str, changed_fns: set, cg, project_files: list,
-              client, model: str) -> dict:
-    """
-    Run the agent loop against the Anthropic API.
-    Returns the arguments passed to submit_impact_report as the final result.
-    """
-    initial_message = (
-        f"Git diff:\n{diff_text}\n\n"
-        f"Functions directly modified: {sorted(changed_fns) if changed_fns else '(parse from diff)'}\n\n"
-        f"Trace the full impact using the available tools, then call submit_impact_report."
+# ── Tool executor (shared by both providers) ──────────────────────────────────
+
+def _execute_tool(name: str, args: dict, cg, project_files: list):
+    if name == "find_callers":
+        return find_callers(args["function_name"], cg)
+    elif name == "find_callees":
+        return find_callees(args["function_name"], cg)
+    elif name == "get_call_chain":
+        return get_call_chain(args["function_name"], args.get("depth", 3), cg)
+    elif name == "read_function":
+        return read_function(args["function_name"], cg)
+    elif name == "read_header":
+        return read_header(args["function_name"], project_files)
+    elif name == "search_code":
+        return search_code(args["pattern"], project_files)
+    return f"Unknown tool: {name}"
+
+
+def _tool_result_str(result) -> str:
+    return json.dumps(result) if not isinstance(result, str) else result
+
+
+# ── Anthropic API call with retry ─────────────────────────────────────────────
+
+def _call_anthropic(client, model: str, messages: list, call_num: int,
+                    max_retries: int = 4):
+    print(f"    [agent] API call #{call_num} ...", flush=True)
+    wait = 15
+    for attempt in range(max_retries + 1):
+        try:
+            return client.messages.create(
+                model=model,
+                max_tokens=1024,
+                system=SYSTEM_PROMPT,
+                tools=TOOL_SCHEMAS,
+                messages=messages,
+            )
+        except anthropic.BadRequestError as e:
+            if "credit balance" in str(e) or "billing" in str(e).lower():
+                raise RuntimeError(
+                    "Anthropic API credits exhausted. "
+                    "Add credits at console.anthropic.com/settings/billing"
+                ) from None
+            raise
+        except anthropic.RateLimitError as e:
+            if attempt == max_retries:
+                raise
+            retry_after = None
+            try:
+                retry_after = int(e.response.headers.get("retry-after", 0))
+            except Exception:
+                pass
+            delay = retry_after if retry_after and retry_after > 0 else wait
+            print(f"    [agent] Rate limit - waiting {delay}s "
+                  f"(retry {attempt + 1}/{max_retries})...", flush=True)
+            time.sleep(delay)
+            wait = min(wait * 2, 60)
+
+
+# ── OpenAI API call ───────────────────────────────────────────────────────────
+
+def _call_openai(client, model: str, messages: list, call_num: int):
+    print(f"    [agent] API call #{call_num} ...", flush=True)
+    return client.chat.completions.create(
+        model=model,
+        messages=messages,
+        tools=TOOL_SCHEMAS_OPENAI,
+        tool_choice="auto",
+        temperature=0,
     )
 
-    messages = [{"role": "user", "content": initial_message}]
-    tool_log: list[str] = []
 
-    while True:
-        response = client.messages.create(
-            model=model,
-            max_tokens=4096,
-            system=SYSTEM_PROMPT,
-            tools=TOOL_SCHEMAS,
-            messages=messages,
+# ── Main agent loop ───────────────────────────────────────────────────────────
+
+def run_agent(diff_text: str, changed_fns: set, cg, project_files: list,
+              client, model: str, provider: str = "anthropic",
+              cg_content: str = "") -> dict:
+    """
+    Run the agent loop for either Anthropic or OpenAI.
+    cg_content: pre-built call graph context string (from build_diff_with_graph).
+                When provided, the agent starts with full graph knowledge and
+                skips find_callers / get_call_chain tool calls entirely.
+    Returns the arguments passed to submit_impact_report as the final result.
+    """
+    if cg_content:
+        initial_content = (
+            f"{cg_content}\n\n"
+            f"Functions directly modified: {sorted(changed_fns) if changed_fns else '(parse from diff)'}\n\n"
+            f"The call graph above already shows all callers and callees. "
+            f"Identify the full impact from it, then call submit_impact_report. "
+            f"Only use read_function or search_code if you suspect a concrete bug."
+        )
+    else:
+        initial_content = (
+            f"Git diff:\n{diff_text}\n\n"
+            f"Functions directly modified: {sorted(changed_fns) if changed_fns else '(parse from diff)'}\n\n"
+            f"Trace the full impact using the available tools, then call submit_impact_report."
         )
 
-        messages.append({"role": "assistant", "content": response.content})
+    tool_log: list[str] = []
+    api_call_count = 0
+    total_tool_calls = 0
 
-        # Agent gave a plain text answer with no tool call — shouldn't happen normally
-        if response.stop_reason == "end_turn":
-            text = " ".join(
-                b.text for b in response.content if hasattr(b, "text")
-            )
-            return {
-                "changed_functions": sorted(changed_fns),
-                "affected_functions": [],
-                "bugs_introduced": [],
-                "severity": "unknown",
-                "concerns": text or "Agent ended without submitting a report.",
-                "_tool_log": tool_log,
-            }
+    # ── OpenAI loop ───────────────────────────────────────────────────────────
+    if provider == "openai":
+        messages: list = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user",   "content": initial_content},
+        ]
 
-        tool_results = []
-        final_report = None
+        while True:
+            api_call_count += 1
+            response = _call_openai(client, model, messages, api_call_count)
+            choice = response.choices[0]
+            msg    = choice.message
 
-        for block in response.content:
-            if block.type != "tool_use":
-                continue
+            # Append assistant turn (must include tool_calls if present)
+            asst: dict = {"role": "assistant", "content": msg.content or ""}
+            if msg.tool_calls:
+                asst["tool_calls"] = [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                    for tc in msg.tool_calls
+                ]
+            messages.append(asst)
 
-            name = block.name
-            args = block.input
-            tool_log.append(name)
+            # No tool calls — agent finished without submit_impact_report
+            if not msg.tool_calls or choice.finish_reason == "stop":
+                return {
+                    "changed_functions": sorted(changed_fns),
+                    "affected_functions": [],
+                    "bugs_introduced": [],
+                    "severity": "unknown",
+                    "concerns": msg.content or "Agent ended without submitting a report.",
+                    "_tool_log": tool_log,
+                }
 
-            print(f"    [agent] {name}({', '.join(f'{k}={v!r}' for k, v in args.items())})")
+            final_report = None
 
-            if name == "submit_impact_report":
-                args["_tool_log"] = tool_log
-                final_report = args
-                result = "Report submitted."
+            for tc in msg.tool_calls:
+                name = tc.function.name
+                args = json.loads(tc.function.arguments)
+                tool_log.append(name)
+                total_tool_calls += 1
 
-            elif name == "find_callers":
-                result = find_callers(args["function_name"], cg)
-            elif name == "find_callees":
-                result = find_callees(args["function_name"], cg)
-            elif name == "get_call_chain":
-                result = get_call_chain(args["function_name"], args.get("depth", 3), cg)
-            elif name == "read_function":
-                result = read_function(args["function_name"], cg)
-            elif name == "read_header":
-                result = read_header(args["function_name"], project_files)
-            elif name == "search_code":
-                result = search_code(args["pattern"], project_files)
+                print(f"    [agent] {name}({', '.join(f'{k}={v!r}' for k, v in args.items())})",
+                      flush=True)
+
+                if total_tool_calls >= MAX_TOOL_CALLS and name != "submit_impact_report":
+                    print(f"    [agent] Tool call limit ({MAX_TOOL_CALLS}) reached - forcing report",
+                          flush=True)
+                    content = "Tool call limit reached. Call submit_impact_report now."
+                elif name == "submit_impact_report":
+                    args["_tool_log"] = tool_log
+                    final_report = args
+                    content = "Report submitted."
+                else:
+                    content = _tool_result_str(_execute_tool(name, args, cg, project_files))
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": content,
+                })
+
+            if final_report:
+                return final_report
+
+    # ── Anthropic loop ────────────────────────────────────────────────────────
+    else:
+        messages = [{"role": "user", "content": initial_content}]
+
+        while True:
+            api_call_count += 1
+            response = _call_anthropic(client, model, messages, api_call_count)
+            messages.append({"role": "assistant", "content": response.content})
+
+            if response.stop_reason == "end_turn":
+                text = " ".join(
+                    b.text for b in response.content if hasattr(b, "text")
+                )
+                return {
+                    "changed_functions": sorted(changed_fns),
+                    "affected_functions": [],
+                    "bugs_introduced": [],
+                    "severity": "unknown",
+                    "concerns": text or "Agent ended without submitting a report.",
+                    "_tool_log": tool_log,
+                }
+
+            tool_results = []
+            final_report = None
+
+            for block in response.content:
+                if block.type != "tool_use":
+                    continue
+
+                name = block.name
+                args = block.input
+                tool_log.append(name)
+                total_tool_calls += 1
+
+                print(f"    [agent] {name}({', '.join(f'{k}={v!r}' for k, v in args.items())})",
+                      flush=True)
+
+                if total_tool_calls >= MAX_TOOL_CALLS and name != "submit_impact_report":
+                    print(f"    [agent] Tool call limit ({MAX_TOOL_CALLS}) reached - forcing report",
+                          flush=True)
+                    content = "Tool call limit reached. Call submit_impact_report now."
+                elif name == "submit_impact_report":
+                    args["_tool_log"] = tool_log
+                    final_report = args
+                    content = "Report submitted."
+                else:
+                    content = _tool_result_str(_execute_tool(name, args, cg, project_files))
+
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": content,
+                })
+
+            if final_report:
+                return final_report
+
+            if tool_results:
+                messages.append({"role": "user", "content": tool_results})
             else:
-                result = f"Unknown tool: {name}"
+                break
 
-            tool_results.append({
-                "type": "tool_result",
-                "tool_use_id": block.id,
-                "content": json.dumps(result) if not isinstance(result, str) else result,
-            })
-
-        if final_report:
-            return final_report
-
-        if tool_results:
-            messages.append({"role": "user", "content": tool_results})
-        else:
-            break
-
-    return {
-        "changed_functions": sorted(changed_fns),
-        "affected_functions": [],
-        "bugs_introduced": [],
-        "severity": "unknown",
-        "concerns": "Agent loop ended unexpectedly.",
-        "_tool_log": tool_log,
-    }
+        return {
+            "changed_functions": sorted(changed_fns),
+            "affected_functions": [],
+            "bugs_introduced": [],
+            "severity": "unknown",
+            "concerns": "Agent loop ended unexpectedly.",
+            "_tool_log": tool_log,
+        }

@@ -13,10 +13,25 @@ export function activate(context: vscode.ExtensionContext) {
     );
 }
 
+// ── Auto-configure on first install ──────────────────────────────────────────
+
 function autoConfigureSettings(extensionUri: vscode.Uri) {
     const cfg = vscode.workspace.getConfiguration('graphguard');
 
-    // Auto-detect libclang.dll on Windows if not set
+    if (!cfg.get<string>('pythonPath')) {
+        const detected = detectPython();
+        if (detected) {
+            cfg.update('pythonPath', detected, vscode.ConfigurationTarget.Global);
+        }
+    }
+
+    if (!cfg.get<string>('scriptPath')) {
+        const detected = detectScript(extensionUri);
+        if (detected) {
+            cfg.update('scriptPath', detected, vscode.ConfigurationTarget.Global);
+        }
+    }
+
     if (!cfg.get<string>('libclangPath')) {
         const candidates = [
             String.raw`C:\msys64\ucrt64\bin\libclang.dll`,
@@ -29,53 +44,86 @@ function autoConfigureSettings(extensionUri: vscode.Uri) {
             cfg.update('libclangPath', found, vscode.ConfigurationTarget.Global);
         }
     }
+}
 
-    // Auto-detect Python if not set
-    if (!cfg.get<string>('pythonPath')) {
-        const pythonCandidates = ['python', 'python3', 'py'];
-        for (const cmd of pythonCandidates) {
-            try {
-                const result = cp.spawnSync(cmd, ['--version'], { encoding: 'utf-8' });
-                if (result.status === 0) {
-                    cfg.update('pythonPath', cmd, vscode.ConfigurationTarget.Global);
-                    break;
-                }
-            } catch { /* try next */ }
+function detectPython(): string | null {
+    if (process.platform === 'win32') {
+        // Ask the py launcher for the actual interpreter path
+        try {
+            const r = cp.spawnSync('py', ['-c', 'import sys; print(sys.executable)'],
+                { encoding: 'utf-8', timeout: 5000 });
+            const p = r.stdout?.trim();
+            if (r.status === 0 && p && fs.existsSync(p)) return p;
+        } catch { /* no py launcher */ }
+
+        // Scan AppData\Local\Programs\Python for installed versions
+        const username = process.env['USERNAME'] || '';
+        const base = path.join('C:', 'Users', username, 'AppData', 'Local', 'Programs', 'Python');
+        if (fs.existsSync(base)) {
+            const versions = fs.readdirSync(base)
+                .filter(d => d.startsWith('Python'))
+                .sort()
+                .reverse(); // newest first
+            for (const ver of versions) {
+                const exe = path.join(base, ver, 'python.exe');
+                if (fs.existsSync(exe)) return exe;
+            }
         }
+
+        return null;
     }
 
-    // Auto-detect script path if not set
-    if (!cfg.get<string>('scriptPath')) {
-        const sibling = path.join(extensionUri.fsPath, '..', 'graphguard.py');
-        if (fs.existsSync(sibling)) {
-            cfg.update('scriptPath', sibling, vscode.ConfigurationTarget.Global);
-        }
+    // macOS / Linux
+    for (const cmd of ['python3', 'python']) {
+        try {
+            const r = cp.spawnSync(cmd, ['--version'], { encoding: 'utf-8', timeout: 3000 });
+            if (r.status === 0) {
+                const which = cp.spawnSync('which', [cmd], { encoding: 'utf-8' });
+                const p = which.stdout?.trim();
+                if (p && fs.existsSync(p)) return p;
+                return cmd;
+            }
+        } catch { /* try next */ }
     }
+    return null;
+}
+
+function detectScript(extensionUri: vscode.Uri): string | null {
+    // 1. Workspace root — works for any user who opens the GraphGuard project folder
+    const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (wsRoot) {
+        const p = path.join(wsRoot, 'graphguard.py');
+        if (fs.existsSync(p)) return p;
+    }
+    // 2. Sibling of extension folder — works in dev / F5 mode
+    const sibling = path.join(extensionUri.fsPath, '..', 'graphguard.py');
+    if (fs.existsSync(sibling)) return sibling;
+    return null;
 }
 
 export function deactivate() {}
 
-// ── Paths ─────────────────────────────────────────────────────────────────────
+// ── Path resolvers (runtime) ──────────────────────────────────────────────────
 
 function resolvePython(): string {
-    const cfg = vscode.workspace.getConfiguration('graphguard');
-    const custom = cfg.get<string>('pythonPath');
+    const custom = vscode.workspace.getConfiguration('graphguard').get<string>('pythonPath');
     if (custom) return custom;
-    // On Windows 'python' is often absent; 'py' (launcher) is the reliable default
     return process.platform === 'win32' ? 'py' : 'python3';
 }
 
 function resolveScript(extensionUri: vscode.Uri): string | null {
-    const cfg = vscode.workspace.getConfiguration('graphguard');
-    const custom = cfg.get<string>('scriptPath');
-    if (custom) {
-        if (fs.existsSync(custom)) return custom;
-        return null; // explicitly set but wrong — report the bad path
+    const custom = vscode.workspace.getConfiguration('graphguard').get<string>('scriptPath');
+    if (custom) return fs.existsSync(custom) ? custom : null;
+
+    // Workspace root (primary fallback — installed VSIX scenario)
+    const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (wsRoot) {
+        const p = path.join(wsRoot, 'graphguard.py');
+        if (fs.existsSync(p)) return p;
     }
-    // When running from the repo (F5 dev mode), extensionUri is vscode-extension/
+    // Sibling (dev mode)
     const sibling = path.join(extensionUri.fsPath, '..', 'graphguard.py');
     if (fs.existsSync(sibling)) return sibling;
-
     return null;
 }
 
@@ -108,8 +156,6 @@ class GraphGuardViewProvider implements vscode.WebviewViewProvider {
         this._checkDiff();
     }
 
-    // ── File watcher ─────────────────────────────────────────────────────────
-
     private _startWatcher() {
         this._watcher = vscode.workspace.createFileSystemWatcher('**/*.{c,h}');
         const debounce = () => {
@@ -121,27 +167,17 @@ class GraphGuardViewProvider implements vscode.WebviewViewProvider {
         this._watcher.onDidDelete(debounce);
     }
 
-    // ── Git diff check ────────────────────────────────────────────────────────
-
     private _checkDiff() {
         const root = workspaceRoot();
         if (!root) return;
-
-        cp.exec('git diff HEAD --name-only', { cwd: root }, (_err, stdout) => {
+        cp.exec('git diff HEAD --name-only', { cwd: root }, (_err: Error | null, stdout: string) => {
             const files = stdout.trim()
                 .split('\n')
                 .filter(f => f.endsWith('.c') || f.endsWith('.h'))
                 .map(f => path.basename(f));
-
-            this._view?.webview.postMessage({
-                type: 'status',
-                hasChanges: files.length > 0,
-                files,
-            });
+            this._view?.webview.postMessage({ type: 'status', hasChanges: files.length > 0, files });
         });
     }
-
-    // ── Analysis runner ───────────────────────────────────────────────────────
 
     private _runAnalysis(model: string, approach: string) {
         if (this._running) return;
@@ -156,7 +192,7 @@ class GraphGuardViewProvider implements vscode.WebviewViewProvider {
                 : 'graphguard.py could not be found automatically.';
             this._view?.webview.postMessage({
                 type: 'error',
-                message: `${detail}\n\nFix: open VS Code Settings (Ctrl+,), search "graphguard",\nand set graphguard.scriptPath to the full path of graphguard.py.\n\nExample: C:\\Users\\you\\Desktop\\GraphGuard\\graphguard.py`,
+                message: `${detail}\n\nFix: open Settings (Ctrl+,), search "graphguard",\nset graphguard.scriptPath to the full path of graphguard.py.\n\nExample: C:\\Users\\you\\Desktop\\GraphGuard\\graphguard.py`,
             });
             return;
         }
@@ -167,10 +203,19 @@ class GraphGuardViewProvider implements vscode.WebviewViewProvider {
             vscode.workspace.getConfiguration('graphguard').get<string>('libclangPath') ||
             process.env['LIBCLANG_PATH'] || '';
 
-        const proc = cp.spawn(python, [script, 'analyze', '--model', model, '--approach', approach], {
-            cwd: root,
-            env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1', ...(libclangPath ? { LIBCLANG_PATH: libclangPath } : {}) },
-        });
+        const proc = cp.spawn(
+            python,
+            [script, 'analyze', '--model', model, '--approach', approach],
+            {
+                cwd: root,
+                env: {
+                    ...process.env,
+                    PYTHONIOENCODING: 'utf-8',
+                    PYTHONUTF8: '1',
+                    ...(libclangPath ? { LIBCLANG_PATH: libclangPath } : {}),
+                },
+            }
+        );
 
         proc.stdout.on('data', (data: Buffer) => {
             for (const raw of data.toString().split('\n')) {
@@ -191,12 +236,8 @@ class GraphGuardViewProvider implements vscode.WebviewViewProvider {
         proc.on('close', (code) => {
             this._running = false;
             if (code !== 0) {
-                this._view?.webview.postMessage({
-                    type: 'output',
-                    line: `\n[Process exited with code ${code}]`,
-                });
+                this._view?.webview.postMessage({ type: 'output', line: `\n[Process exited with code ${code}]` });
             }
-            // Re-check diff so button state reflects current state
             this._checkDiff();
             this._view?.webview.postMessage({ type: 'done' });
         });
@@ -205,13 +246,11 @@ class GraphGuardViewProvider implements vscode.WebviewViewProvider {
             this._running = false;
             this._view?.webview.postMessage({
                 type: 'error',
-                message: `Failed to start Python ("${python}"): ${err.message}\n\nFix: open VS Code Settings (Ctrl+,), search "graphguard",\nand set graphguard.pythonPath to your Python executable.\n\nExample: C:\\Users\\ASUS_ZEPHYRUS\\AppData\\Local\\Programs\\Python\\Python312\\python.exe`,
+                message: `Failed to start Python ("${python}"): ${err.message}\n\nFix: open Settings (Ctrl+,), search "graphguard",\nset graphguard.pythonPath to your Python executable.\n\nExample: C:\\Users\\ASUS_ZEPHYRUS\\AppData\\Local\\Programs\\Python\\Python312\\python.exe`,
             });
         });
     }
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function workspaceRoot(): string | undefined {
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
@@ -236,163 +275,126 @@ body {
 }
 
 h3 {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.7;
-  margin-bottom: 10px;
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  opacity: 0.7; margin-bottom: 10px;
 }
 
 .status {
-  font-size: 12px;
-  padding: 6px 8px;
-  border-radius: 3px;
-  margin-bottom: 12px;
-  border-left: 3px solid transparent;
+  font-size: 12px; padding: 6px 8px; border-radius: 3px;
+  margin-bottom: 12px; border-left: 3px solid transparent;
 }
-.status.idle    { background: var(--vscode-inputValidation-infoBackground, #1a3a4a); border-color: #007acc; }
-.status.ready   { background: var(--vscode-inputValidation-warningBackground, #352a05); border-color: #b89500; }
+.status.idle  { background: var(--vscode-inputValidation-infoBackground,#1a3a4a); border-color:#007acc; }
+.status.ready { background: var(--vscode-inputValidation-warningBackground,#352a05); border-color:#b89500; }
 
-label { display: block; font-size: 11px; opacity: 0.7; margin: 8px 0 3px; }
+label { display:block; font-size:11px; opacity:0.7; margin:8px 0 3px; }
 
 select {
-  width: 100%;
-  padding: 4px 6px;
-  background: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border, #3c3c3c);
-  border-radius: 2px;
-  font-size: 12px;
-  font-family: inherit;
+  width:100%; padding:4px 6px;
+  background:var(--vscode-input-background);
+  color:var(--vscode-input-foreground);
+  border:1px solid var(--vscode-input-border,#3c3c3c);
+  border-radius:2px; font-size:12px; font-family:inherit;
+}
+
+.hint {
+  font-size:10px; opacity:0.45; margin-top:3px; line-height:1.4;
 }
 
 #analyzeBtn {
-  width: 100%;
-  margin-top: 12px;
-  padding: 7px;
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border: none;
-  border-radius: 2px;
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-  font-weight: 500;
+  width:100%; margin-top:12px; padding:7px;
+  background:var(--vscode-button-background);
+  color:var(--vscode-button-foreground);
+  border:none; border-radius:2px; font-size:12px;
+  font-family:inherit; cursor:pointer; font-weight:500;
 }
-#analyzeBtn:hover:not(:disabled) { background: var(--vscode-button-hoverBackground); }
-#analyzeBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+#analyzeBtn:hover:not(:disabled) { background:var(--vscode-button-hoverBackground); }
+#analyzeBtn:disabled { opacity:0.4; cursor:not-allowed; }
 
-#spinner { font-size: 11px; opacity: 0.6; margin-top: 8px; display: none; text-align: center; }
+#spinner {
+  font-size:11px; opacity:0.6; margin-top:8px;
+  display:none; text-align:center; line-height:1.6;
+}
 
+.toolbar {
+  display:none; justify-content:flex-end; margin-top:10px;
+}
 .clear-btn {
-  font-size: 10px; opacity: 0.5; cursor: pointer; float: right;
-  margin-top: 12px; background: none; border: none; color: inherit;
-  text-decoration: underline; display: none;
+  font-size:10px; opacity:0.45; cursor:pointer;
+  background:none; border:none; color:inherit;
+  text-decoration:underline;
 }
-.clear-btn:hover { opacity: 1; }
+.clear-btn:hover { opacity:1; }
 
 /* ── Result card ── */
-#result {
-  margin-top: 14px;
-  display: none;
-  font-size: 12px;
-}
+#result { margin-top:14px; display:none; font-size:12px; }
 
-.section {
-  margin-bottom: 10px;
-}
-
+.section { margin-bottom:10px; }
 .section-title {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  opacity: 0.55;
-  margin-bottom: 5px;
-  padding-bottom: 3px;
-  border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+  font-size:10px; font-weight:700; text-transform:uppercase;
+  letter-spacing:0.07em; opacity:0.55; margin-bottom:5px;
+  padding-bottom:3px; border-bottom:1px solid var(--vscode-panel-border,#3c3c3c);
 }
 
 .fn-item {
-  padding: 2px 0 2px 10px;
-  font-family: var(--vscode-editor-font-family, monospace);
-  font-size: 11px;
-  color: var(--vscode-symbolIcon-functionForeground, #dcdcaa);
-}
-
-.bug-item {
-  padding: 3px 0 3px 10px;
-  font-size: 11px;
-  color: var(--vscode-errorForeground, #f48771);
-  border-left: 2px solid var(--vscode-errorForeground, #f48771);
-  margin: 2px 0;
+  padding:2px 0 2px 10px;
+  font-family:var(--vscode-editor-font-family,monospace);
+  font-size:11px; color:var(--vscode-symbolIcon-functionForeground,#dcdcaa);
 }
 
 .concerns {
-  font-size: 12px;
-  line-height: 1.5;
-  opacity: 0.9;
-  padding: 6px 8px;
-  background: var(--vscode-editor-background);
-  border-radius: 3px;
-  border-left: 3px solid var(--vscode-panel-border, #3c3c3c);
+  font-size:12px; line-height:1.5; opacity:0.9;
+  padding:6px 8px; background:var(--vscode-editor-background);
+  border-radius:3px; border-left:3px solid var(--vscode-panel-border,#3c3c3c);
 }
 
 .severity {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 1px 7px;
-  border-radius: 10px;
-  margin-bottom: 10px;
+  display:inline-block; font-size:11px; font-weight:700;
+  padding:1px 7px; border-radius:10px; margin-bottom:10px;
 }
-.sev-low      { background: #1e3a1e; color: #89d185; }
-.sev-medium   { background: #3a2e05; color: #cca700; }
-.sev-high     { background: #3a1a05; color: #f48771; }
-.sev-critical { background: #3a0505; color: #ff6b6b; }
-.sev-unknown  { background: #2a2a2a; color: #aaa; }
+.sev-low      { background:#1e3a1e; color:#89d185; }
+.sev-medium   { background:#3a2e05; color:#cca700; }
+.sev-high     { background:#3a1a05; color:#f48771; }
+.sev-critical { background:#3a0505; color:#ff6b6b; }
+.sev-unknown  { background:#2a2a2a; color:#aaa; }
 
-.tool-call {
-  font-family: var(--vscode-editor-font-family, monospace);
-  font-size: 10px;
-  opacity: 0.5;
-  padding: 1px 0 1px 10px;
+.show-more {
+  font-size:10px; opacity:0.5; cursor:pointer;
+  padding:2px 0 2px 10px; text-decoration:underline;
+}
+.show-more:hover { opacity:1; }
+.hidden-items { display:none; }
+
+.tool-summary {
+  font-size:10px; opacity:0.4; padding:2px 0;
+  font-family:var(--vscode-editor-font-family,monospace);
 }
 
-/* ── Raw log (during streaming) ── */
+/* ── Streaming log ── */
 #log {
-  margin-top: 12px;
-  font-family: var(--vscode-editor-font-family, monospace);
-  font-size: 10px;
-  opacity: 0.6;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 120px;
-  overflow-y: auto;
-  display: none;
-  padding: 4px;
-  border-left: 2px solid var(--vscode-panel-border, #3c3c3c);
+  margin-top:12px;
+  font-family:var(--vscode-editor-font-family,monospace);
+  font-size:10px; opacity:0.6; white-space:pre-wrap;
+  word-break:break-word; max-height:160px; overflow-y:auto;
+  display:none; padding:6px;
+  border-left:2px solid var(--vscode-panel-border,#3c3c3c);
+  background:var(--vscode-editor-background);
+  border-radius:0 3px 3px 0;
 }
 
 .error-box {
-  margin-top: 10px;
-  padding: 8px;
-  font-size: 11px;
-  font-family: var(--vscode-editor-font-family, monospace);
-  white-space: pre-wrap;
-  word-break: break-word;
-  background: var(--vscode-inputValidation-errorBackground, #3a0505);
-  border-left: 3px solid var(--vscode-errorForeground, #f48771);
-  border-radius: 2px;
-  display: none;
+  margin-top:10px; padding:8px; font-size:11px;
+  font-family:var(--vscode-editor-font-family,monospace);
+  white-space:pre-wrap; word-break:break-word;
+  background:var(--vscode-inputValidation-errorBackground,#3a0505);
+  border-left:3px solid var(--vscode-errorForeground,#f48771);
+  border-radius:2px; display:none;
 }
 </style>
 </head>
 <body>
 
 <h3>GraphGuard</h3>
-
 <div id="status" class="status idle">Scanning for changes...</div>
 
 <label for="model">Model</label>
@@ -405,33 +407,66 @@ select {
 </select>
 
 <label for="approach">Approach</label>
-<select id="approach">
-  <option value="agent">Agent — iterative tool calls</option>
+<select id="approach" onchange="updateHint()">
   <option value="graph">Diff + Call Graph</option>
+  <option value="agent" id="agentOption">Agent (iterative) — Claude only</option>
   <option value="diff">Diff only</option>
 </select>
+<div class="hint" id="approachHint">One API call — fast results with full call graph context.</div>
 
 <button id="analyzeBtn" disabled>Analyze Impact</button>
-<div id="spinner">Running analysis...</div>
+<div id="spinner">Running analysis...<br><span id="elapsed" style="font-size:10px;opacity:0.7"></span></div>
 
 <div id="log"></div>
 <div id="result"></div>
 <div id="errorBox" class="error-box"></div>
 
-<button class="clear-btn" id="clearBtn">clear</button>
+<div class="toolbar" id="toolbar">
+  <button class="clear-btn" id="clearBtn">Clear</button>
+</div>
 
 <script>
-const vscode   = acquireVsCodeApi();
-const btn      = document.getElementById('analyzeBtn');
-const status   = document.getElementById('status');
-const spinner  = document.getElementById('spinner');
-const log      = document.getElementById('log');
-const result   = document.getElementById('result');
-const errorBox = document.getElementById('errorBox');
-const clearBtn = document.getElementById('clearBtn');
-let hasChanges = false;
-let rawLines   = [];
+const vscode    = acquireVsCodeApi();
+const btn       = document.getElementById('analyzeBtn');
+const statusEl  = document.getElementById('status');
+const spinner   = document.getElementById('spinner');
+const elapsedEl = document.getElementById('elapsed');
+const log       = document.getElementById('log');
+const result    = document.getElementById('result');
+const errorBox  = document.getElementById('errorBox');
+const toolbar   = document.getElementById('toolbar');
+const clearBtn  = document.getElementById('clearBtn');
+let hasChanges  = false;
+let rawLines    = [];
+let timerInterval = null;
+let startTime   = 0;
 
+// ── Restore saved state when panel is re-shown ──────────────────────────────
+(function restoreState() {
+  const s = vscode.getState();
+  if (s && s.html) {
+    result.innerHTML = s.html;
+    result.style.display = 'block';
+    toolbar.style.display = 'flex';
+    // Re-attach expand/collapse listeners
+    attachExpandListeners();
+  }
+})();
+
+// ── Approach hint ─────────────────────────────────────────────────────────────
+const hints = {
+  graph: 'One API call — fast results with full call graph context.',
+  agent: 'Multiple tool calls — thorough but slower.',
+  diff:  'Fastest — no call graph, LLM sees only the diff.',
+};
+function updateHint() {
+  const approach = document.getElementById('approach');
+  document.getElementById('approachHint').textContent = hints[approach.value] || '';
+}
+
+document.getElementById('model').addEventListener('change', updateHint);
+
+// ── Analyze button ───────────────────────────────────────────────────────────
 btn.addEventListener('click', () => {
   const model    = document.getElementById('model').value;
   const approach = document.getElementById('approach').value;
@@ -441,9 +476,19 @@ btn.addEventListener('click', () => {
   result.style.display = 'none';
   result.innerHTML = '';
   errorBox.style.display = 'none';
-  clearBtn.style.display = 'none';
+  toolbar.style.display = 'none';
   spinner.style.display = 'block';
   btn.disabled = true;
+  vscode.setState(null);
+
+  // Start elapsed timer
+  startTime = Date.now();
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const secs = Math.floor((Date.now() - startTime) / 1000);
+    elapsedEl.textContent = secs + 's elapsed';
+  }, 1000);
+
   vscode.postMessage({ type: 'analyze', model, approach });
 });
 
@@ -451,10 +496,12 @@ clearBtn.addEventListener('click', () => {
   log.style.display = 'none';
   result.style.display = 'none';
   errorBox.style.display = 'none';
-  clearBtn.style.display = 'none';
+  toolbar.style.display = 'none';
   rawLines = [];
+  vscode.setState(null);
 });
 
+// ── Message handler ───────────────────────────────────────────────────────────
 window.addEventListener('message', event => {
   const msg = event.data;
 
@@ -463,92 +510,135 @@ window.addEventListener('message', event => {
     if (msg.hasChanges) {
       const names = msg.files.slice(0, 3).join(', ') +
                     (msg.files.length > 3 ? \` +\${msg.files.length - 3} more\` : '');
-      status.textContent = 'Changes: ' + names;
-      status.className   = 'status ready';
-      if (!spinner.style.display || spinner.style.display === 'none') btn.disabled = false;
+      statusEl.textContent = 'Changes: ' + names;
+      statusEl.className   = 'status ready';
+      if (spinner.style.display === 'none' || !spinner.style.display) btn.disabled = false;
     } else {
-      status.textContent = 'No uncommitted changes in .c/.h files';
-      status.className   = 'status idle';
+      statusEl.textContent = 'No uncommitted changes in .c/.h files';
+      statusEl.className   = 'status idle';
       btn.disabled = true;
     }
   }
 
   else if (msg.type === 'output') {
     rawLines.push(msg.line);
-    // Show agent tool calls in the small log during streaming
-    if (msg.line.includes('[agent]')) {
-      log.textContent += msg.line.trim() + '\\n';
-      log.scrollTop = log.scrollHeight;
-    }
+    // Show all output lines while running so user can see progress
+    log.textContent += msg.line.trim() + '\\n';
+    log.scrollTop = log.scrollHeight;
   }
 
   else if (msg.type === 'done') {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
     spinner.style.display = 'none';
-    btn.disabled = !hasChanges;
-    clearBtn.style.display = 'inline';
     log.style.display = 'none';
+    btn.disabled = !hasChanges;
     renderResult(rawLines);
+    toolbar.style.display = 'flex';
   }
 
   else if (msg.type === 'error') {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
     spinner.style.display = 'none';
+    log.style.display = 'none';
     btn.disabled = !hasChanges;
-    clearBtn.style.display = 'inline';
     errorBox.textContent = msg.message;
     errorBox.style.display = 'block';
+    toolbar.style.display = 'flex';
   }
 });
 
-// ── Parser: turn raw graphguard output lines into structured cards ──────────
+// ── Render result ─────────────────────────────────────────────────────────────
+
+const SECTION_HEADERS = [
+  'FUNCTIONS DIRECTLY MODIFIED',
+  'WHAT WILL BE AFFECTED',
+  'BUGS / RISKS INTRODUCED',
+  'SUMMARY',
+  'TOOLS CALLED BY AGENT',
+];
 
 function renderResult(lines) {
   const text = lines.join('\\n');
 
-  // Pull out fields using the known output format
-  const severity   = extract(text, /Severity\\s*:\\s*(\\S+)/i);
-  const model      = extract(text, /Model\\s*:\\s*(.+)/i);
-  const approach   = extract(text, /Approach\\s*:\\s*(.+)/i);
-  const concerns   = extractBlock(lines, 'SUMMARY');
-  const changed    = extractList(lines, 'FUNCTIONS DIRECTLY MODIFIED');
-  const affected   = extractList(lines, 'WHAT WILL BE AFFECTED');
-  const bugs       = extractList(lines, 'BUGS / RISKS INTRODUCED');
-  const tools      = extractList(lines, 'TOOLS CALLED BY AGENT');
+  const severityRaw = extract(text, /Severity\\s*:\\s*(\\S+)/i);
+  const severity = severityRaw ? severityRaw.replace(/[\\[\\]]/g, '') : null;
+  const modelVal = extract(text, /Model\\s*:\\s*(.+)/i);
+  const appVal   = extract(text, /Approach\\s*:\\s*(.+)/i);
+  const summary  = extractBlock(lines, 'SUMMARY');
+  const changed  = extractList(lines, 'FUNCTIONS DIRECTLY MODIFIED');
+  const affected = extractList(lines, 'WHAT WILL BE AFFECTED');
+  const bugs     = extractBlock(lines, 'BUGS / RISKS INTRODUCED');
+  const toolsCnt = countTools(lines);
 
-  if (!severity && !concerns && changed.length === 0) {
-    // Couldn't parse — show raw
-    result.innerHTML = '<div class="section"><div class="section-title">Output</div><pre style="font-size:11px;white-space:pre-wrap;word-break:break-word;opacity:.8">' + esc(text) + '</pre></div>';
+  if (!severity && !summary && changed.length === 0) {
+    result.innerHTML =
+      '<div class="section"><div class="section-title">Output</div>' +
+      '<pre style="font-size:11px;white-space:pre-wrap;word-break:break-word;opacity:.8">' +
+      esc(text) + '</pre></div>';
     result.style.display = 'block';
+    vscode.setState({ html: result.innerHTML });
     return;
   }
 
   let html = '';
 
   if (severity) {
-    const cls = 'sev-' + severity.toLowerCase().replace(/[\\[\\]]/g, '');
-    html += \`<span class="severity \${cls}">\${severity.replace(/[\\[\\]]/g, '')}</span>\`;
+    const cls = 'sev-' + severity.toLowerCase();
+    html += \`<span class="severity \${cls}">\${esc(severity.toUpperCase())}</span>\`;
   }
-  if (model && approach) {
-    html += \`<div style="font-size:10px;opacity:.5;margin-bottom:10px">\${esc(model.trim())} — \${esc(approach.trim())}</div>\`;
+  if (modelVal || appVal) {
+    html += \`<div style="font-size:10px;opacity:.45;margin-bottom:10px">\${esc((modelVal||'').trim())}\${appVal ? ' — ' + esc(appVal.trim()) : ''}</div>\`;
   }
 
   if (changed.length) {
-    html += section('Functions Modified', changed.map(f => \`<div class="fn-item">\${esc(f)}</div>\`).join(''));
+    html += section('Functions Modified', fnList(changed));
   }
+
   if (affected.length) {
-    html += section('What Will Be Affected', affected.map(f => \`<div class="fn-item">\${esc(f)}</div>\`).join(''));
+    html += section('What Will Be Affected', fnListCollapsible(affected));
   }
-  if (bugs.length) {
-    html += section('Bugs / Risks', bugs.map(b => \`<div class="bug-item">\${esc(b)}</div>\`).join(''));
+
+  if (bugs) {
+    html += section('Bugs / Risks', \`<div class="concerns">\${esc(bugs)}</div>\`);
   }
-  if (concerns) {
-    html += section('Summary', \`<div class="concerns">\${esc(concerns)}</div>\`);
+
+  if (summary) {
+    html += section('Summary', \`<div class="concerns">\${esc(summary)}</div>\`);
   }
-  if (tools.length) {
-    html += section('Agent Tools Called', tools.map((t,i) => \`<div class="tool-call">\${i+1}. \${esc(t)}</div>\`).join(''));
+
+  if (toolsCnt > 0) {
+    html += \`<div class="tool-summary">\${toolsCnt} agent tool call\${toolsCnt !== 1 ? 's' : ''} made</div>\`;
   }
 
   result.innerHTML = html;
   result.style.display = 'block';
+  vscode.setState({ html: result.innerHTML });
+  attachExpandListeners();
+}
+
+function fnList(items) {
+  return items.map(f => \`<div class="fn-item">\${esc(f)}</div>\`).join('');
+}
+
+function fnListCollapsible(items) {
+  const LIMIT = 5;
+  if (items.length <= LIMIT) return fnList(items);
+  const visible = items.slice(0, LIMIT);
+  const hidden  = items.slice(LIMIT);
+  return fnList(visible) +
+    \`<div class="hidden-items" id="hiddenFns">\${fnList(hidden)}</div>\` +
+    \`<div class="show-more" id="showMoreBtn">+ \${hidden.length} more</div>\`;
+}
+
+function attachExpandListeners() {
+  const btn = document.getElementById('showMoreBtn');
+  const box = document.getElementById('hiddenFns');
+  if (btn && box) {
+    btn.addEventListener('click', () => {
+      box.style.display = 'block';
+      btn.style.display = 'none';
+    });
+  }
 }
 
 function section(title, body) {
@@ -564,35 +654,63 @@ function extract(text, re) {
   return m ? m[1].trim() : null;
 }
 
+// Extracts list items under the FIRST occurrence of a section header.
+// The line immediately after the header is often a decorator (----), so we
+// skip the first separator and only stop on a second one or another header.
+function extractList(lines, header) {
+  let capture = false;
+  let skippedSep = false;
+  const items = [];
+  for (const line of lines) {
+    if (!capture && line.includes(header)) { capture = true; continue; }
+    if (!capture) continue;
+    if (line.match(/^\\s*[=\\-]{4,}/)) {
+      if (!skippedSep) { skippedSep = true; continue; }  // skip decorative separator
+      break;
+    }
+    if (SECTION_HEADERS.some(h => h !== header && line.includes(h))) break;
+    const t = line.replace(/^\\s*[-!\\d.]+\\s*/, '').trim();
+    if (t) items.push(t);
+  }
+  return [...new Set(items)];
+}
+
 function extractBlock(lines, header) {
   let capture = false;
+  let skippedSep = false;
   const out = [];
   for (const line of lines) {
-    if (line.includes(header)) { capture = true; continue; }
-    if (capture) {
-      if (line.match(/^[\\s]*[-=]{4,}/) || line.match(/^\\s{2,}[A-Z /]{4,}$/)) break;
-      const t = line.trim();
-      if (t) out.push(t);
+    if (!capture && line.includes(header)) { capture = true; continue; }
+    if (!capture) continue;
+    if (line.match(/^\\s*[=\\-]{4,}/)) {
+      if (!skippedSep) { skippedSep = true; continue; }
+      break;
     }
+    if (SECTION_HEADERS.some(h => h !== header && line.includes(h))) break;
+    const t = line.trim();
+    if (t) out.push(t);
   }
   return out.join(' ').trim() || null;
 }
 
-function extractList(lines, header) {
+function countTools(lines) {
   let capture = false;
-  const items = [];
+  let skippedSep = false;
+  let count = 0;
   for (const line of lines) {
-    if (line.includes(header)) { capture = true; continue; }
-    if (capture) {
-      if (line.match(/^\\s*[=]{4,}/) || (line.match(/^\\s{2,}[A-Z /]{4,}$/) && !line.includes('-'))) break;
-      const t = line.replace(/^\\s*[-!\\d.]+\\s*/, '').trim();
-      if (t && !t.match(/^[-=]{3,}/)) items.push(t);
+    if (!capture && line.includes('TOOLS CALLED BY AGENT')) { capture = true; continue; }
+    if (!capture) continue;
+    if (line.match(/^\\s*[=\\-]{4,}/)) {
+      if (!skippedSep) { skippedSep = true; continue; }
+      break;
     }
+    if (SECTION_HEADERS.some(h => h !== 'TOOLS CALLED BY AGENT' && line.includes(h))) break;
+    const t = line.replace(/^\\s*[-!\\d.]+\\s*/, '').trim();
+    if (t) count++;
   }
-  return items;
+  return count;
 }
 </script>
-
 </body>
 </html>`;
 }
