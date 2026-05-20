@@ -1,5 +1,5 @@
 ========================================================================
-Project : 09_graph
+Project : 09_graph  [OPENAI / gpt-4o]
 ========================================================================
 
 GROUND TRUTH
@@ -12,7 +12,7 @@ FRIEND 1  (diff only)
 ------------------------------------------------------------------------
   Predicted changed  : ['bfs', 'graph_add_edge']
   Predicted affected : ['any function using graph_add_edge or bfs', 'graph_init']
-  Concerns : The changes introduce boundary checks and reset visited nodes, which may affect graph operations and traversal logic.
+  Concerns : The changes introduce boundary checks and reset logic that could affect graph operations and traversal.
   TP=2  TN=1  FP=1  FN=2  Prec=0.667  Rec=0.500  F1=0.571  Acc=0.500
   False alarms : ['graph_init']
   Missed       : ['graph_has_path', 'main']
@@ -25,7 +25,16 @@ FRIEND 2  (diff + call graph)
   Concerns : The changes introduce input validation and reset logic, which may affect graph operations and traversal.
   TP=4  TN=2  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
 
+------------------------------------------------------------------------
+FRIEND 3  (agent — iterative tool calls)
+------------------------------------------------------------------------
+  Tools called   : read_function, read_function, read_function, read_function, submit_impact_report
+  Predicted changed  : ['bfs', 'graph_add_edge']
+  Predicted affected : ['bfs', 'graph_add_edge', 'graph_has_path', 'main']
+  Concerns : The changes in 'graph_add_edge' add boundary checks for node indices, preventing out-of-bounds access, which is a positive change. The 'bfs' function now initializes the 'visited' array at the start of each call, ensuring no stale data is used, which is also a beneficial update. The changes are unlikely to introduce new bugs, but they do affect 'graph_has_path' and 'main', which rely on these functions. The overall impact is low as the changes are improvements to existing logic.
+  TP=4  TN=2  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
 ========================================================================
 WINNER : Friend 2 (diff+graph)
-  Friend 1 F1 = 0.571    Friend 2 F1 = 1.000
+  Friend 1 F1 = 0.571    Friend 2 F1 = 1.000    Friend 3 F1 = 1.000
 ========================================================================

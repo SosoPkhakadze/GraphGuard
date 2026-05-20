@@ -1,5 +1,5 @@
 ========================================================================
-Project : 02_utf8
+Project : 02_utf8  [OPENAI / gpt-4o]
 ========================================================================
 
 GROUND TRUTH
@@ -12,7 +12,7 @@ FRIEND 1  (diff only)
 ------------------------------------------------------------------------
   Predicted changed  : ['utf8_strlen']
   Predicted affected : ['functions that call utf8_strlen']
-  Concerns : The change fixes an incorrect string traversal which could affect UTF-8 string length calculations.
+  Concerns : The change fixes the iteration over UTF-8 characters, which may affect string processing logic.
   TP=1  TN=2  FP=0  FN=1  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.750
   Missed       : ['main']
 
@@ -24,7 +24,16 @@ FRIEND 2  (diff + call graph)
   Concerns : The change in utf8_strlen may affect string length calculations, impacting functions relying on it.
   TP=2  TN=2  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
 
+------------------------------------------------------------------------
+FRIEND 3  (agent — iterative tool calls)
+------------------------------------------------------------------------
+  Tools called   : read_function, read_function, submit_impact_report
+  Predicted changed  : ['utf8_strlen']
+  Predicted affected : ['main', 'utf8_strlen']
+  Concerns : The function utf8_strlen was modified to correctly increment the pointer by the length of the UTF-8 character rather than just one byte. This change ensures that the function accurately counts the number of UTF-8 characters in a string. The main function, which calls utf8_strlen, is affected, but the change is a bug fix and should not introduce new issues. The utf8_valid function, which also calls utf8_charlen, is unaffected by this change as it increments the pointer by one byte intentionally for validation purposes.
+  TP=2  TN=2  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
 ========================================================================
 WINNER : Friend 2 (diff+graph)
-  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000
+  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000    Friend 3 F1 = 1.000
 ========================================================================

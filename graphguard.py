@@ -572,16 +572,17 @@ def process_project(project_dir: str, client, provider: str, model: str,
     m1 = compute_metrics(predicted_set(r1), gt_pos, all_fns)
     m2 = compute_metrics(predicted_set(r2), gt_pos, all_fns)
 
-    # ── Friend 3 (agent) — Anthropic only, opt-in ─────────────────────────────
+    # ── Friend 3 (agent) — opt-in, works with any provider ───────────────────
     m3 = r3 = None
     if run_agent_eval:
-        if provider != "anthropic":
-            print(f"  [{name}] Friend 3 skipped — agent requires an Anthropic model.")
-        else:
-            print(f"  [{name}] Querying {model_label} (Friend 3 / Agent)...")
-            raw3 = run_agent(diff_text, changed_fns, cg, c_files, client, model)
+        print(f"  [{name}] Querying {model_label} (Friend 3 / Agent)...")
+        try:
+            raw3 = run_agent(diff_text, changed_fns, cg, c_files, client, model,
+                             provider=provider, cg_content=cg_content)
             r3   = raw3
             m3   = compute_metrics(predicted_set(raw3), gt_pos, all_fns)
+        except RuntimeError as e:
+            print(f"  [{name}] Agent error: {e} — skipping Friend 3.")
 
     scores = [m1["F1"], m2["F1"]] + ([m3["F1"]] if m3 else [])
     best   = max(scores)
@@ -720,8 +721,8 @@ def cmd_batch(args, cfg):
     out_suffix = "" if provider == "openai" else f"_{provider}"
     run_agent_eval = getattr(args, "agent", False)
 
-    if run_agent_eval and provider != "anthropic":
-        print("WARNING: --agent requires an Anthropic model. Friend 3 will be skipped per project.")
+    if run_agent_eval:
+        print(f"Agent evaluation enabled — Friend 3 will run with {model}.")
 
     batch_dir = os.path.abspath(args.batch_dir)
     if not os.path.isdir(batch_dir):

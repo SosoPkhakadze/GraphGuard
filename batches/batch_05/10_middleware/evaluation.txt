@@ -1,5 +1,5 @@
 ========================================================================
-Project : 10_middleware
+Project : 10_middleware  [OPENAI / gpt-4o]
 ========================================================================
 
 GROUND TRUTH
@@ -11,8 +11,8 @@ GROUND TRUTH
 FRIEND 1  (diff only)
 ------------------------------------------------------------------------
   Predicted changed  : ['mw_run']
-  Predicted affected : []
-  Concerns : The change modifies how the request is passed to the chain functions, which could alter their behavior.
+  Predicted affected : ['functions that call mw_run or depend on its output']
+  Concerns : The change in parameter passing could alter the behavior of middleware functions in the chain.
   TP=1  TN=5  FP=0  FN=1  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.857
   Missed       : ['main']
 
@@ -24,7 +24,16 @@ FRIEND 2  (diff + call graph)
   Concerns : The change in mw_run may affect how response values are processed in the middleware chain.
   TP=2  TN=5  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
 
+------------------------------------------------------------------------
+FRIEND 3  (agent — iterative tool calls)
+------------------------------------------------------------------------
+  Tools called   : read_function, read_function, submit_impact_report
+  Predicted changed  : ['mw_run']
+  Predicted affected : ['main', 'mw_run']
+  Concerns : The function mw_run was modified to pass *resp instead of req to the chain functions. This change could introduce side effects if any chain function modifies *resp, affecting subsequent calls in the loop. The main function calls mw_run, and any unexpected behavior in mw_run could impact the program's output.
+  TP=2  TN=5  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
 ========================================================================
 WINNER : Friend 2 (diff+graph)
-  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000
+  Friend 1 F1 = 0.667    Friend 2 F1 = 1.000    Friend 3 F1 = 1.000
 ========================================================================
