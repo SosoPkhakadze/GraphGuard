@@ -212,10 +212,13 @@ add_body(
 
 add_body(
     "Evaluation across 50 open-source C projects shows substantial differences. The "
-    "Baseline Approach achieves an average F1 score of 0.52, while the "
-    "Context-Augmented Approach achieves 0.98 on the same dataset. These results "
-    "suggest that structural context - knowing the actual call relationships in the "
-    "specific project - is the main factor determining accuracy, not LLM capability alone."
+    "Baseline Approach achieves an average F1 score of 0.531, the Context-Augmented "
+    "Approach achieves 0.981, and the Agent-Based Approach achieves 0.980. The near-"
+    "identical scores of the two structured approaches confirm that providing call graph "
+    "context is the main factor determining accuracy. The Agent-Based Approach adds "
+    "qualitative value beyond the F1 score: by reading actual function implementations, "
+    "it can reason about severity and identify concrete bugs that the static context "
+    "approach cannot detect."
 )
 
 add_blank()
@@ -1112,10 +1115,9 @@ table2.style = "Table Grid"
 
 headers2 = ["Approach", "Model", "Precision", "Recall", "F1"]
 rows2 = [
-    ["Baseline",          "GPT-4o",          "0.48",  "0.61",  "0.52"],
-    ["Baseline",          "Claude Sonnet 4",  "0.51",  "0.58",  "0.51"],
-    ["Context-Augmented", "GPT-4o",           "0.97",  "0.99",  "0.98"],
-    ["Context-Augmented", "Claude Sonnet 4",  "0.98",  "0.98",  "0.98"],
+    ["Baseline",          "GPT-4o",  "0.48",  "0.61",  "0.531"],
+    ["Context-Augmented", "GPT-4o",  "0.97",  "0.99",  "0.981"],
+    ["Agent",             "GPT-4o",  "0.98",  "0.98",  "0.980"],
 ]
 
 hdr2 = table2.rows[0].cells
@@ -1137,33 +1139,32 @@ for r_idx, row_data in enumerate(rows2, 1):
 add_para("", space_after=4)
 
 add_body(
-    "The difference between approaches is large. The Baseline Approach averages "
-    "F1 = 0.52 across both models, while the Context-Augmented Approach averages "
-    "F1 = 0.98. The improvement holds consistently across both GPT-4o and Claude "
-    "Sonnet 4, with less than 0.01 difference between the two models within each "
-    "approach. This suggests that the structural context - not the choice of model - "
-    "is the dominant factor in prediction quality."
+    "The difference between the Baseline and the two structured approaches is large. "
+    "The Baseline Approach averages F1 = 0.531 across 50 projects. The "
+    "Context-Augmented Approach averages F1 = 0.981 and the Agent-Based Approach "
+    "averages F1 = 0.980 - essentially identical on affected-function detection. "
+    "This result confirms that providing the call graph, whether as static context "
+    "or through interactive tool calls, is what drives accuracy - not the "
+    "specific mechanism by which the model accesses it."
 )
 
 add_body(
-    "Looking at precision and recall separately reveals an interesting asymmetry "
-    "in Baseline errors. The Baseline Approach has higher recall (0.61) than "
-    "precision (0.48), meaning the model more often over-predicts the impact set "
-    "than under-predicts it. This makes intuitive sense: when uncertain, an LLM "
-    "reasoning about impact tends to include functions that sound related by name "
-    "or are nearby in the code structure, generating false positives. True negatives "
-    "- functions the model correctly excludes - are harder to get right without "
+    "Looking at precision and recall separately reveals an asymmetry in Baseline "
+    "errors. The Baseline Approach has higher recall (0.61) than precision (0.48), "
+    "meaning the model more often over-predicts the impact set than under-predicts "
+    "it. When uncertain, an LLM reasoning without structural context tends to include "
+    "functions that sound related by name or are in the same file, generating false "
+    "positives. True negatives - correctly excluding an unrelated function - require "
     "knowing the actual call structure."
 )
 
 add_body(
-    "The Context-Augmented Approach nearly eliminates both error types. Precision "
-    "of 0.97 means the model almost never predicts a function as affected when it "
-    "is not. Recall of 0.99 means it almost never misses an actually affected "
-    "function. The few remaining errors come from two sources: projects where "
-    "function pointer usage creates call paths not captured by the static graph, "
-    "and projects where macro expansion creates effective function calls that "
-    "libclang does not parse as calls."
+    "The Context-Augmented and Agent approaches nearly eliminate both error types, "
+    "reaching precision of 0.97-0.98 and recall of 0.98-0.99. The remaining "
+    "errors come from function pointer calls not captured by the static graph and "
+    "from macro-wrapped call sites that libclang does not attribute to the correct "
+    "caller. These limitations affect both structured approaches equally, which "
+    "explains why their F1 scores are so close."
 )
 
 add_body(
@@ -1287,12 +1288,13 @@ add_body(
 
 add_body(
     "Second, we quantified the impact of providing call graph context to an LLM "
-    "on impact analysis accuracy. The Context-Augmented Approach, which includes "
-    "the project's call relationships in the prompt, achieves average F1 = 0.98 "
-    "across 50 open-source C projects. The Baseline Approach, which provides only "
-    "the diff, achieves average F1 = 0.52. This is a large, consistent improvement "
-    "across both GPT-4o and Claude Sonnet 4, establishing that structural context "
-    "is the primary driver of accuracy for this task."
+    "on impact analysis accuracy. The Context-Augmented Approach achieves average "
+    "F1 = 0.981 across 50 open-source C projects. The Baseline Approach achieves "
+    "average F1 = 0.531. The Agent-Based Approach achieves F1 = 0.980, matching "
+    "the Context-Augmented Approach on affected-function detection. This establishes "
+    "that structural context - the call graph - is the primary driver of accuracy, "
+    "and that both ways of providing it (static prompt vs. interactive tool calls) "
+    "produce equivalent detection quality."
 )
 
 add_body(
