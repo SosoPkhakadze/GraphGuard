@@ -266,11 +266,17 @@ def get_cache_path(changed_files: list[str]) -> str:
     return os.path.join(root, ".graphguard_cache.json")
 
 
+EXCLUDE_DIRS = {"test", "tests", "test_", "spec", "specs", "unittest",
+                "build", "cmake_build", "out", "dist", "third_party",
+                "thirdparty", "vendor", "external", "deps", "unity",
+                "googletest", "gtest", "cmocka", "check", "fixture",
+                "fuzzing", "fuzz", "fuzzers", "examples", "samples"}
+
 def find_project_c_files(changed_files: list[str]) -> list[str]:
     """
     Given a list of changed .c files, locate the "project root" for each
     (go up one level if the file lives in src/, source/, or lib/) then
-    collect all .c files in that subtree.
+    collect all .c files in that subtree, excluding test/build directories.
     """
     search_roots: set[str] = set()
     for f in changed_files:
@@ -281,7 +287,12 @@ def find_project_c_files(changed_files: list[str]) -> list[str]:
 
     all_c: list[str] = []
     for root in search_roots:
-        all_c.extend(glob.glob(os.path.join(root, "**", "*.c"), recursive=True))
+        for path in glob.glob(os.path.join(root, "**", "*.c"), recursive=True):
+            parts = os.path.normpath(path).split(os.sep)
+            if any(p.lower().rstrip("s") in EXCLUDE_DIRS or p.lower() in EXCLUDE_DIRS
+                   for p in parts[len(os.path.normpath(root).split(os.sep)):]):
+                continue
+            all_c.append(path)
     return list(set(all_c))
 
 
