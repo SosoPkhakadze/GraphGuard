@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -187,9 +187,9 @@
+ 
+ static unsigned char* cJSON_strdup(const unsigned char* string, const internal_hooks * const hooks)
+ {
+     size_t length = 0;
+-    unsigned char *copy = NULL;
++    unsigned char *copy = NULL;  /* BUG: strdup contract change */
+ 
+     if (string == NULL)
+     {
+         return NULL;

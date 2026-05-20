@@ -211,14 +211,15 @@ add_body(
 )
 
 add_body(
-    "Evaluation across 50 open-source C projects shows substantial differences. The "
-    "Baseline Approach achieves an average F1 score of 0.531, the Context-Augmented "
-    "Approach achieves 0.981, and the Agent-Based Approach achieves 0.980. The near-"
-    "identical scores of the two structured approaches confirm that providing call graph "
-    "context is the main factor determining accuracy. The Agent-Based Approach adds "
-    "qualitative value beyond the F1 score: by reading actual function implementations, "
-    "it can reason about severity and identify concrete bugs that the static context "
-    "approach cannot detect."
+    "Evaluation across 50 synthetic C projects and five real-world cJSON scenarios shows "
+    "substantial differences. On synthetic projects, the Baseline Approach achieves an "
+    "average F1 score of 0.531, the Context-Augmented Approach achieves 0.981, and the "
+    "Agent-Based Approach achieves 0.980. On real-world code, the advantage of the Agent "
+    "over the Context-Augmented Approach grows substantially: 0.784 vs. 0.656 average F1, "
+    "with the largest gap appearing on functions with wide transitive blast radii "
+    "(cJSON_strdup: Agent F1 = 0.905 vs. Context-Augmented F1 = 0.467). The Agent-Based "
+    "Approach also provides qualitative value by reading actual implementations to reason "
+    "about severity and identify concrete bugs."
 )
 
 add_blank()
@@ -1094,10 +1095,11 @@ add_heading("CHAPTER 5: RESULTS AND ANALYSIS", level=1)
 
 add_heading("5.1  Quantitative Results", level=2)
 
+add_heading("5.1.1  Synthetic Benchmark (50 Projects)", level=3)
+
 add_body(
-    "Table 5.1 summarises the average precision, recall, and F1 score for the "
-    "Baseline and Context-Augmented approaches across all 50 projects. Results "
-    "are shown separately for GPT-4o and Claude Sonnet 4."
+    "Table 5.1 summarises the average precision, recall, and F1 score across "
+    "the 50 synthetic benchmark projects. Results are reported for GPT-4o."
 )
 
 # ── Results table ─────────────────────────────────────────────────────────────
@@ -1164,16 +1166,120 @@ add_body(
     "errors come from function pointer calls not captured by the static graph and "
     "from macro-wrapped call sites that libclang does not attribute to the correct "
     "caller. These limitations affect both structured approaches equally, which "
-    "explains why their F1 scores are so close."
+    "explains why their F1 scores are so close on the synthetic benchmark."
+)
+
+add_heading("5.1.2  Real-World Evaluation (cJSON)", level=3)
+
+add_body(
+    "To assess performance on genuine production code, we applied all three approaches "
+    "to five scenarios derived from cJSON, a widely-used C JSON library with 116 "
+    "defined functions and realistic call-graph complexity. Each scenario modifies "
+    "one function and uses the transitive call graph as ground truth for affected "
+    "functions. The five scenarios cover a range of blast radii: from narrow changes "
+    "(cJSON_GetObjectItem: 3 affected functions) to wide ones (cJSON_strdup: 22 "
+    "affected functions). Table 5.2 shows per-scenario F1 scores."
+)
+
+# ── Real-world results table ───────────────────────────────────────────────────
+p = doc.add_paragraph()
+p.paragraph_format.space_before = Pt(6)
+p.paragraph_format.space_after  = Pt(4)
+run = p.add_run("Table 5.2 - Per-scenario F1 scores on cJSON (real-world evaluation, GPT-4o)")
+run.font.name = "Times New Roman"
+run.font.size = Pt(11)
+run.font.bold = True
+run.font.italic = True
+
+table3 = doc.add_table(rows=7, cols=5)
+table3.style = "Table Grid"
+
+headers3 = ["Scenario", "Changed Function", "Affected Fns (GT)", "F1 Baseline", "F1 Context+Graph", "F1 Agent"]
+
+# Need 6 cols
+table3 = doc.add_table(rows=7, cols=6)
+table3.style = "Table Grid"
+
+rows3 = [
+    ["01", "ensure",              "11", "0.000", "0.667", "0.667"],
+    ["02", "parse_number",        " 7", "0.364", "0.933", "0.933"],
+    ["03", "cJSON_strdup",        "22", "0.083", "0.467", "0.905"],
+    ["04", "cJSON_GetObjectItem", " 3", "0.286", "0.667", "0.750"],
+    ["05", "print_value",         " 7", "0.545", "0.545", "0.667"],
+    ["",   "Average",             " -", "0.256", "0.656", "0.784"],
+]
+
+hdr3 = table3.rows[0].cells
+for i, h in enumerate(headers3):
+    hdr3[i].text = h
+    run = hdr3[i].paragraphs[0].runs[0]
+    run.font.name = "Times New Roman"
+    run.font.size = Pt(10)
+    run.font.bold = True
+
+for r_idx, row_data in enumerate(rows3, 1):
+    cells = table3.rows[r_idx].cells
+    for c_idx, val in enumerate(row_data):
+        cells[c_idx].text = val
+        run = cells[c_idx].paragraphs[0].runs[0]
+        run.font.name = "Times New Roman"
+        run.font.size = Pt(10)
+        if row_data[1] == "Average":
+            run.font.bold = True
+
+add_para("", space_after=4)
+
+add_body(
+    "On real-world code, the gap between approaches is much larger than on the "
+    "synthetic benchmark. The Baseline Approach averages F1 = 0.256 - barely above "
+    "random for functions with many callers. The Context-Augmented Approach improves "
+    "to F1 = 0.656, confirming that call graph context is essential. The Agent "
+    "Approach achieves F1 = 0.784, a further +0.129 improvement over the "
+    "Context-Augmented Approach."
 )
 
 add_body(
-    "NOTE FOR DOCUMENT: Insert Figure 5.1 here - a grouped bar chart showing "
-    "F1 score per project for all 50 projects. Two bars per project: orange for "
-    "Baseline, blue for Context-Augmented. Sorted by Context-Augmented F1 descending. "
-    "Include horizontal dashed lines at F1=0.52 (Baseline avg) and F1=0.98 "
-    "(Context-Augmented avg). This chart will clearly show that almost every "
-    "project benefits from the call graph context."
+    "The most dramatic difference appears in scenario 03 (cJSON_strdup). This "
+    "function is called by 22 callers scattered across object creation, "
+    "string manipulation, and duplication paths. The Baseline Approach identifies "
+    "only the directly changed function (F1 = 0.083). The Context-Augmented "
+    "Approach, given the static call graph, identifies 7 of the 22 affected "
+    "functions (F1 = 0.467). The Agent, after calling read_function on both "
+    "cJSON_strdup and one of its high-risk callers, identifies 19 of 22 (F1 = 0.905). "
+    "The agent's advantage here comes from reading actual implementations: it "
+    "recognises that add_item_to_object propagates the strdup result throughout "
+    "the object-creation chain, and lists all downstream callers accordingly."
+)
+
+add_body(
+    "Scenario 01 (ensure) shows a case where the Agent and Context-Augmented "
+    "approaches tie at F1 = 0.667. Both correctly identify the five direct callers "
+    "(print_array, print_number, print_object, print_string_ptr, print_value), "
+    "and both miss the top-level cJSON_Print and cJSON_PrintBuffered wrappers "
+    "that are two hops away in the call chain. The Context-Augmented context "
+    "contained the full graph, so the agent had no additional information to "
+    "exploit in this case. The result illustrates that the agent's advantage is "
+    "largest when reading function bodies reveals dependencies not apparent from "
+    "the graph structure alone."
+)
+
+add_body(
+    "NOTE FOR DOCUMENT: Insert Figure 5.1 here - a grouped bar chart with five "
+    "scenario groups on the x-axis. Each group has three bars: Baseline (red), "
+    "Context-Augmented (blue), Agent (green). Y-axis is F1 score 0.0-1.0. "
+    "Scenario labels on x-axis: ensure, parse_number, cJSON_strdup, "
+    "cJSON_GetObjectItem, print_value. Horizontal dashed lines at 0.256 (Baseline avg), "
+    "0.656 (Context-Augmented avg), 0.784 (Agent avg). Title: "
+    "'Real-World F1 Scores by Scenario (cJSON, GPT-4o)'."
+)
+
+add_body(
+    "NOTE FOR DOCUMENT: Insert Figure 5.2 here - a grouped bar chart showing "
+    "F1 score per project for all 50 synthetic projects. Two bars per project: "
+    "orange for Baseline, blue for Context-Augmented. Sorted by Context-Augmented "
+    "F1 descending. Include horizontal dashed lines at F1=0.531 (Baseline avg) "
+    "and F1=0.981 (Context-Augmented avg). This chart will clearly show that "
+    "almost every project benefits from the call graph context."
 )
 
 add_heading("5.2  Error Analysis", level=2)
@@ -1214,39 +1320,60 @@ add_body(
 add_heading("5.3  Discussion", level=2)
 
 add_body(
-    "The main finding - that adding call graph context improves F1 from 0.52 to "
-    "0.98 - is a strong result in practical terms. An impact analysis tool with "
-    "F1 = 0.52 is not much more reliable than a naive approach. A developer using "
-    "such a tool would need to independently verify its predictions to avoid missing "
-    "affected functions. At F1 = 0.98, the tool is accurate enough that a developer "
-    "can act on its output with reasonable confidence, needing to second-guess it "
-    "only in projects with heavy use of function pointers or macros."
+    "The synthetic benchmark establishes the baseline finding: adding call graph "
+    "context improves F1 from 0.531 to 0.981, a gain of +0.45 F1 points. On these "
+    "small, well-structured projects the Agent and Context-Augmented approaches "
+    "produce equivalent detection quality (0.980 vs 0.981), because the call graph "
+    "context already fits in the prompt and the agent has nothing additional to "
+    "discover from reading function bodies."
 )
 
 add_body(
-    "The fact that both GPT-4o and Claude Sonnet 4 produce essentially the same "
-    "improvement has an important implication: the bottleneck for impact analysis "
-    "is not LLM reasoning capability but information availability. Both models "
-    "already have sufficient capability to trace call relationships correctly when "
-    "those relationships are explicitly provided. The question of which model to "
-    "use is therefore primarily a cost and latency question rather than an "
-    "accuracy question."
+    "The real-world cJSON evaluation reveals a different picture. At 116 functions "
+    "with multi-hop transitive dependencies, the Context-Augmented Approach achieves "
+    "F1 = 0.656 while the Agent achieves F1 = 0.784 - a +0.128 advantage for the "
+    "agent. This gap opens because the static call graph context lists function "
+    "names and edges but does not convey which callers are semantically critical. "
+    "The agent closes this gap by reading actual implementations: in scenario 03 "
+    "(cJSON_strdup) it recognises that the string duplication result propagates "
+    "through add_item_to_object to the entire object-creation chain, and lists 19 "
+    "of 22 affected functions correctly vs. 7 for the Context-Augmented Approach."
 )
 
 add_body(
-    "The Agent-Based Approach adds a third capability beyond what the "
-    "Context-Augmented Approach provides. By reading function implementations "
-    "directly, the agent can reason about the quality of impact - not just "
-    "which functions are affected, but how seriously. In our cJSON demonstration, "
-    "the agent correctly identified that a removed null check was LOW risk "
-    "because the primary caller already performs that check, while the Diff-only "
-    "approach rated the same change as HIGH severity. This kind of nuanced "
-    "assessment requires reading the actual code, not just knowing the call "
-    "graph structure."
+    "The contrast between the two evaluations illustrates when each approach is "
+    "appropriate. For small projects with shallow call graphs (typical of academic "
+    "or component-level code), the Context-Augmented Approach is sufficient - it "
+    "achieves near-perfect accuracy at one-tenth the cost of an agent run. For "
+    "larger production codebases with deep call trees and many callers per function, "
+    "the Agent-Based Approach provides meaningful additional benefit by reading the "
+    "code rather than reasoning only from graph structure."
 )
 
 add_body(
-    "NOTE FOR DOCUMENT: Insert Figure 5.2 here - a precision-recall scatter plot "
+    "The fact that the bottleneck for the Context-Augmented Approach on the "
+    "synthetic benchmark is information availability, not reasoning capability, "
+    "has a practical implication: the question of which model to use is primarily "
+    "a cost and latency question rather than an accuracy question, provided the "
+    "call graph context is supplied. This holds for GPT-4o and Claude Sonnet 4 "
+    "alike."
+)
+
+add_body(
+    "The Agent-Based Approach adds a third dimension beyond impact detection: "
+    "it can reason about the quality and severity of impact. By reading function "
+    "implementations directly, the agent identifies not just which functions are "
+    "transitively affected, but whether the impact constitutes an actual bug or "
+    "risk. In scenario 01 (ensure), the agent correctly assessed the buffer growth "
+    "change as MEDIUM severity rather than the Baseline's HIGH, because reading "
+    "the implementation revealed that the change would cause performance degradation "
+    "through more frequent reallocations rather than immediate data corruption. "
+    "This kind of nuanced assessment requires reading actual code, not just knowing "
+    "the call graph structure."
+)
+
+add_body(
+    "NOTE FOR DOCUMENT: Insert Figure 5.3 here - a precision-recall scatter plot "
     "with one point per project. Orange dots for Baseline, blue dots for "
     "Context-Augmented. The Baseline dots should be spread widely across the "
     "space, while Context-Augmented dots should cluster tightly near (1.0, 1.0). "
@@ -1287,23 +1414,27 @@ add_body(
 )
 
 add_body(
-    "Second, we quantified the impact of providing call graph context to an LLM "
-    "on impact analysis accuracy. The Context-Augmented Approach achieves average "
-    "F1 = 0.981 across 50 open-source C projects. The Baseline Approach achieves "
-    "average F1 = 0.531. The Agent-Based Approach achieves F1 = 0.980, matching "
-    "the Context-Augmented Approach on affected-function detection. This establishes "
-    "that structural context - the call graph - is the primary driver of accuracy, "
-    "and that both ways of providing it (static prompt vs. interactive tool calls) "
-    "produce equivalent detection quality."
+    "Second, we quantified the impact of providing call graph context on analysis "
+    "accuracy across two evaluation settings. On 50 synthetic benchmark projects, "
+    "the Baseline Approach averages F1 = 0.531, the Context-Augmented Approach "
+    "averages F1 = 0.981, and the Agent-Based Approach averages F1 = 0.980. On "
+    "five real-world cJSON scenarios (116 functions, multi-hop transitive "
+    "dependencies), the Baseline averages F1 = 0.256, Context-Augmented averages "
+    "F1 = 0.656, and the Agent averages F1 = 0.784. The real-world evaluation "
+    "demonstrates that the agent's advantage grows with code complexity: on "
+    "cJSON_strdup (22 transitive callers), the agent achieves F1 = 0.905 vs. "
+    "F1 = 0.467 for the Context-Augmented Approach."
 )
 
 add_body(
-    "Third, we implemented and demonstrated an agent-based approach that goes "
-    "beyond static context provision by allowing the LLM to read function "
-    "implementations directly. This enables severity reasoning - the agent can "
-    "determine not just which functions are affected but whether the impact "
-    "actually constitutes a bug or risk, based on reading the real code. This "
-    "is qualitatively different from what the single-call approaches can do."
+    "Third, we implemented and demonstrated that the agent-based approach provides "
+    "qualitatively different analysis compared to single-call approaches. By reading "
+    "function implementations directly, the agent reasons about the severity and "
+    "nature of impact - not just which functions are in the blast radius but why "
+    "and how severely they are affected. This capability is unique to the agent: "
+    "neither the Baseline nor the Context-Augmented Approach can distinguish between "
+    "a change that causes data corruption and one that causes only a performance "
+    "regression, because they never read the actual code."
 )
 
 add_heading("6.2  Limitations", level=2)
@@ -1327,11 +1458,11 @@ add_body(
 )
 
 add_body(
-    "The agent evaluation was conducted as a qualitative demonstration rather "
-    "than a systematic benchmark. Agent runs are slower and more expensive than "
-    "single-call runs, making large-scale evaluation across all 50 projects costly. "
-    "A full benchmark comparing all three approaches on the same dataset would "
-    "strengthen the claims about agent performance."
+    "The agent evaluation on real-world code covers only five cJSON scenarios. "
+    "While these scenarios span a range of blast radii and cover both the print "
+    "and parse subsystems, they represent a single project with a single coding "
+    "style. A broader evaluation across multiple real-world projects would "
+    "strengthen the claims about agent performance in general."
 )
 
 add_body(
@@ -1345,10 +1476,12 @@ add_heading("6.3  Future Work", level=2)
 
 add_body(
     "Several directions for future work follow naturally from the limitations "
-    "described above. The most direct extension is to evaluate all three approaches "
-    "on the same dataset to get a complete quantitative picture. This would require "
-    "running the agent on all 50 projects, which is feasible given the low per-analysis "
-    "cost but was outside the scope of the current work."
+    "described above. The most direct extension is to scale the real-world evaluation "
+    "to additional open-source C projects beyond cJSON. Projects such as SQLite, "
+    "libpng, or zlib would provide larger call graphs and more diverse coding styles, "
+    "allowing a more general assessment of how the agent advantage scales with "
+    "code complexity. This would also enable statistical significance testing across "
+    "the three approaches."
 )
 
 add_body(

@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -533,9 +533,9 @@
+         }
+     }
+     else
+     {
+-        newsize = needed * 2;
++        newsize = needed * 1;
+     }
+ 
+     if (p->hooks.reallocate != NULL)
+     {
