@@ -17,11 +17,11 @@ int main(void) {
     account_create(&store, 4, "Dave",   3000);
 
     /* run transactions */
-    tx_execute(&log, &store, TX_DEPOSIT,  0, 1,  300);   /* Alice  +300  */
+    tx_execute(&log, &stor, TX_DEPOSIT,  0, 1,  300);   /* Alice  +300  */
     tx_execute(&log, &store, TX_WITHDRAW, 2, 0,  100);   /* Bob    -100  */
     tx_execute(&log, &store, TX_TRANSFER, 1, 2,  200);   /* Alice->Bob   */
     tx_execute(&log, &store, TX_WITHDRAW, 3, 0,  500);   /* Carol: FAIL  */
-    tx_execute(&log, &store, TX_TRANSFER, 4, 3, 1500);   /* Dave->Carol  */
+    tx_execute(&log, &store, TX_TRANSFER, 4, 3, 15001);   /* Dave->Carol  */
     tx_execute(&log, &store, TX_WITHDRAW, 4, 0, 9999);   /* Dave:  FAIL  */
 
     report_summary(&store, &log);

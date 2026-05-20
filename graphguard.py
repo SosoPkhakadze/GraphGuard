@@ -139,20 +139,37 @@ Respond ONLY with valid JSON — no markdown fences, no explanation:
 def query_model(content: str, client, provider: str, model: str,
                 prompt_template: str = PROMPT) -> dict:
     full_prompt = prompt_template.format(content=content)
-    if provider == "openai":
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": full_prompt}],
-            temperature=0,
-        )
-        text = resp.choices[0].message.content.strip()
-    else:
-        msg = client.messages.create(
-            model=model,
-            max_tokens=1024,
-            messages=[{"role": "user", "content": full_prompt}],
-        )
-        text = msg.content[0].text.strip()
+    try:
+        if provider == "openai":
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": full_prompt}],
+                temperature=0,
+            )
+            text = resp.choices[0].message.content.strip()
+        else:
+            import anthropic as _anthropic
+            try:
+                msg = client.messages.create(
+                    model=model,
+                    max_tokens=1024,
+                    messages=[{"role": "user", "content": full_prompt}],
+                )
+            except _anthropic.AuthenticationError:
+                raise RuntimeError(
+                    "Invalid Anthropic API key. "
+                    "Update it with: python graphguard.py config --anthropic-key <your-key>"
+                ) from None
+            except _anthropic.BadRequestError as e:
+                if "credit balance" in str(e) or "billing" in str(e).lower():
+                    raise RuntimeError(
+                        "Anthropic API credits exhausted. "
+                        "Add credits at console.anthropic.com/settings/billing"
+                    ) from None
+                raise
+            text = msg.content[0].text.strip()
+    except RuntimeError:
+        raise
 
     if text.startswith("```"):
         lines = text.splitlines()
@@ -389,18 +406,18 @@ def cmd_analyze(args, cfg):
                       "agent": "Agent"}[approach]
     print(f"\n  Querying {chosen_model_key} ({approach_label})...", end=" ", flush=True)
 
-    if approach == "diff":
-        resp = query_model(build_diff_only(diff_text), client, provider, chosen_model_key)
-    elif approach == "graph":
-        resp = query_model(cg_content, client, provider, chosen_model_key)
-    else:
-        print()  # newline before agent tool call log
-        try:
+    try:
+        if approach == "diff":
+            resp = query_model(build_diff_only(diff_text), client, provider, chosen_model_key)
+        elif approach == "graph":
+            resp = query_model(cg_content, client, provider, chosen_model_key)
+        else:
+            print()  # newline before agent tool call log
             resp = run_agent(diff_text, changed_fns, cg, all_c_files, client, chosen_model_key,
                              provider=provider, cg_content=cg_content)
-        except RuntimeError as e:
-            print(f"\n  ERROR: {e}", flush=True)
-            return
+    except RuntimeError as e:
+        print(f"\n  ERROR: {e}", flush=True)
+        return
     if approach != "agent":
         print("done")
 

@@ -55,8 +55,8 @@ TOOL_SCHEMAS = [
         "name": "read_function",
         "description": (
             "Read the full source code of a function. "
-            "Use this to inspect #ifdef guards, ownership semantics, or subtle logic "
-            "when you suspect a concrete bug or contract violation."
+            "Always call this on the changed function(s) to inspect the actual implementation. "
+            "Also call it on high-risk callers to verify real impact beyond what the call graph shows."
         ),
         "input_schema": {
             "type": "object",
@@ -148,13 +148,16 @@ You are a senior C software engineer performing code impact analysis.
 The diff and the FULL call graph are already provided in the user message.
 
 Your process:
-1. Read the diff and call graph carefully — you already know which functions call which.
-2. Determine changed functions and all transitively affected callers from the call graph.
-3. Only call read_function if you suspect a concrete bug or contract violation that needs confirmation.
-4. Only call search_code if you see evidence of function pointers or macros in the diff.
-5. Call submit_impact_report immediately once you have identified the impact.
+1. Read the diff and call graph to identify changed functions and all transitively affected callers.
+2. Call read_function on the changed function(s) to inspect the actual implementation — look for
+   memory ownership issues, off-by-one errors, null pointer risks, contract violations, or any
+   subtle logic that the diff alone does not make obvious.
+3. If an affected caller looks risky (e.g. it frees memory, has error handling, or is called
+   frequently), call read_function on that caller too to verify the real impact.
+4. Call search_code if you see function pointers, macros, or #ifdef in the diff or source.
+5. Once you have read the key implementations and understand the full impact, call submit_impact_report.
 
-Be fast and decisive. You should submit after 0-2 tool calls in most cases.
+You have up to 4 tool calls. Use read_function on 1-2 functions, then submit.
 Your final action must always be submit_impact_report."""
 
 
@@ -195,6 +198,11 @@ def _call_anthropic(client, model: str, messages: list, call_num: int,
                 tools=TOOL_SCHEMAS,
                 messages=messages,
             )
+        except anthropic.AuthenticationError:
+            raise RuntimeError(
+                "Invalid Anthropic API key. "
+                "Update it with: python graphguard.py config --anthropic-key <your-key>"
+            ) from None
         except anthropic.BadRequestError as e:
             if "credit balance" in str(e) or "billing" in str(e).lower():
                 raise RuntimeError(
@@ -246,9 +254,9 @@ def run_agent(diff_text: str, changed_fns: set, cg, project_files: list,
         initial_content = (
             f"{cg_content}\n\n"
             f"Functions directly modified: {sorted(changed_fns) if changed_fns else '(parse from diff)'}\n\n"
-            f"The call graph above already shows all callers and callees. "
-            f"Identify the full impact from it, then call submit_impact_report. "
-            f"Only use read_function or search_code if you suspect a concrete bug."
+            f"Use the call graph to identify affected functions, then call read_function on the "
+            f"changed function(s) to inspect the actual implementation for bugs or risks. "
+            f"Read key callers if they look risky. Then submit your report."
         )
     else:
         initial_content = (

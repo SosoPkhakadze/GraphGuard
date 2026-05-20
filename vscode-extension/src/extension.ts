@@ -409,7 +409,7 @@ select {
 <label for="approach">Approach</label>
 <select id="approach" onchange="updateHint()">
   <option value="graph">Diff + Call Graph</option>
-  <option value="agent" id="agentOption">Agent (iterative) — Claude only</option>
+  <option value="agent" id="agentOption">Agent (iterative)</option>
   <option value="diff">Diff only</option>
 </select>
 <div class="hint" id="approachHint">One API call — fast results with full call graph context.</div>
