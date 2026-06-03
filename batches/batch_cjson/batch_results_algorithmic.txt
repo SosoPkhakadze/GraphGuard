@@ -1,0 +1,10 @@
+Batch : batch_cjson
+Approach : Algorithmic
+Projects evaluated : 1
+
+Project                  |   TP   TN   FP   FN |   Prec    Rec     F1    Acc
+----------------------------------------------------------------------------
+cjson_demo               |    7  109    0    0 |  1.000  1.000  1.000  1.000
+----------------------------------------------------------------------------
+
+Avg F1 (algorithmic) : 1.000

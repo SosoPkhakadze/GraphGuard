@@ -1,0 +1,48 @@
+========================================================================
+Project : cjson_demo  [OPENAI / gpt-4o]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['parse_value']
+  Affected : ['cJSON_Parse', 'cJSON_ParseWithLength', 'cJSON_ParseWithLengthOpts', 'cJSON_ParseWithOpts', 'parse_array', 'parse_object', 'parse_value']
+  All fns  : ['add_item_to_array', 'add_item_to_object', 'buffer_skip_whitespace', 'cJSON_AddArrayToObject', 'cJSON_AddBoolToObject', 'cJSON_AddFalseToObject', 'cJSON_AddItemReferenceToArray', 'cJSON_AddItemReferenceToObject', 'cJSON_AddItemToArray', 'cJSON_AddItemToObject', 'cJSON_AddItemToObjectCS', 'cJSON_AddNullToObject', 'cJSON_AddNumberToObject', 'cJSON_AddObjectToObject', 'cJSON_AddRawToObject', 'cJSON_AddStringToObject', 'cJSON_AddTrueToObject', 'cJSON_Compare', 'cJSON_CreateArray', 'cJSON_CreateArrayReference', 'cJSON_CreateBool', 'cJSON_CreateDoubleArray', 'cJSON_CreateFalse', 'cJSON_CreateFloatArray', 'cJSON_CreateIntArray', 'cJSON_CreateNull', 'cJSON_CreateNumber', 'cJSON_CreateObject', 'cJSON_CreateObjectReference', 'cJSON_CreateRaw', 'cJSON_CreateString', 'cJSON_CreateStringArray', 'cJSON_CreateStringReference', 'cJSON_CreateTrue', 'cJSON_Delete', 'cJSON_DeleteItemFromArray', 'cJSON_DeleteItemFromObject', 'cJSON_DeleteItemFromObjectCaseSensitive', 'cJSON_DetachItemFromArray', 'cJSON_DetachItemFromObject', 'cJSON_DetachItemFromObjectCaseSensitive', 'cJSON_DetachItemViaPointer', 'cJSON_Duplicate', 'cJSON_Duplicate_rec', 'cJSON_GetArrayItem', 'cJSON_GetArraySize', 'cJSON_GetErrorPtr', 'cJSON_GetNumberValue', 'cJSON_GetObjectItem', 'cJSON_GetObjectItemCaseSensitive', 'cJSON_GetStringValue', 'cJSON_HasObjectItem', 'cJSON_InitHooks', 'cJSON_InsertItemInArray', 'cJSON_IsArray', 'cJSON_IsBool', 'cJSON_IsFalse', 'cJSON_IsInvalid', 'cJSON_IsNull', 'cJSON_IsNumber', 'cJSON_IsObject', 'cJSON_IsRaw', 'cJSON_IsString', 'cJSON_IsTrue', 'cJSON_Minify', 'cJSON_New_Item', 'cJSON_Parse', 'cJSON_ParseWithLength', 'cJSON_ParseWithLengthOpts', 'cJSON_ParseWithOpts', 'cJSON_Print', 'cJSON_PrintBuffered', 'cJSON_PrintPreallocated', 'cJSON_PrintUnformatted', 'cJSON_ReplaceItemInArray', 'cJSON_ReplaceItemInObject', 'cJSON_ReplaceItemInObjectCaseSensitive', 'cJSON_ReplaceItemViaPointer', 'cJSON_SetNumberHelper', 'cJSON_SetValuestring', 'cJSON_Version', 'cJSON_free', 'cJSON_malloc', 'cJSON_strdup', 'case_insensitive_strcmp', 'cast_away_const', 'compare_double', 'create_reference', 'ensure', 'get_array_item', 'get_decimal_point', 'get_object_item', 'internal_free', 'internal_malloc', 'internal_realloc', 'minify_string', 'parse_array', 'parse_hex4', 'parse_number', 'parse_object', 'parse_string', 'parse_value', 'print', 'print_array', 'print_number', 'print_object', 'print_string', 'print_string_ptr', 'print_value', 'replace_item_in_object', 'skip_multiline_comment', 'skip_oneline_comment', 'skip_utf8_bom', 'suffix_object', 'update_offset', 'utf16_literal_to_utf8']
+
+------------------------------------------------------------------------
+APPROACH 1 - BASELINE (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['parse_value']
+  Predicted affected : ['functions that call parse_value']
+  Concerns : The change adds a boundary check which might prevent parsing errors but could also skip valid inputs if not handled correctly.
+  TP=1  TN=109  FP=0  FN=6  Prec=1.000  Rec=0.143  F1=0.250  Acc=0.948
+  Missed       : ['cJSON_Parse', 'cJSON_ParseWithLength', 'cJSON_ParseWithLengthOpts', 'cJSON_ParseWithOpts', 'parse_array', 'parse_object']
+
+------------------------------------------------------------------------
+APPROACH 2 - CONTEXT-AUGMENTED (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['parse_value']
+  Predicted affected : ['cJSON_Parse', 'cJSON_ParseWithLengthOpts', 'cJSON_ParseWithOpts', 'parse_array', 'parse_object']
+  Concerns : The change in parse_value may affect JSON parsing behavior, especially when input_buffer offset is at or beyond its length.
+  TP=6  TN=109  FP=0  FN=1  Prec=1.000  Rec=0.857  F1=0.923  Acc=0.991
+  Missed       : ['cJSON_ParseWithLength']
+
+------------------------------------------------------------------------
+APPROACH 3 - AGENT-BASED (iterative tool calls)
+------------------------------------------------------------------------
+  Tools called   : read_function, submit_impact_report
+  Predicted changed  : ['parse_value']
+  Predicted affected : ['cJSON_ParseWithLengthOpts', 'parse_array', 'parse_object']
+  Concerns : The modification to `parse_value` adds a necessary check to prevent buffer over-read by ensuring the offset does not exceed the buffer length. This change affects functions that rely on `parse_value` for parsing JSON values, but it should not break existing functionality. Instead, it enhances the robustness of the parsing logic by preventing potential out-of-bounds access.
+  TP=4  TN=109  FP=0  FN=3  Prec=1.000  Rec=0.571  F1=0.727  Acc=0.974
+  Missed       : ['cJSON_Parse', 'cJSON_ParseWithLength', 'cJSON_ParseWithOpts']
+
+------------------------------------------------------------------------
+APPROACH 4 - ALGORITHMIC (pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['parse_value']
+  Predicted affected : ['cJSON_Parse', 'cJSON_ParseWithLength', 'cJSON_ParseWithLengthOpts', 'cJSON_ParseWithOpts', 'parse_array', 'parse_object', 'parse_value']
+  TP=7  TN=109  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
+WINNER : Context-Augmented
+  Baseline F1 = 0.250    Context-Augmented F1 = 0.923    Agent-Based F1 = 0.727    Algorithmic F1 = 1.000
+========================================================================

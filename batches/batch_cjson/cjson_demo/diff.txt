@@ -1,0 +1,17 @@
+diff --git a/src/cJSON.c b/src/cJSON.c
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -1367,9 +1367,10 @@
+ /* Parser core - when encountering text, process appropriately. */
+ static cJSON_bool parse_value(cJSON * const item, parse_buffer * const input_buffer)
+ {
+-    if ((input_buffer == NULL) || (input_buffer->content == NULL))
+-    {
+-        return false; /* no input */
++    if ((input_buffer == NULL) || (input_buffer->content == NULL) ||
++        (input_buffer->offset >= input_buffer->length))
++    {
++        return false; /* no input or already past end */
+     }
+ 
+     /* parse the different types of values */

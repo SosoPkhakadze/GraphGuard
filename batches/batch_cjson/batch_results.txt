@@ -1,0 +1,19 @@
+Batch : batches\batch_cjson
+Model : gpt-4o
+Projects evaluated : 1/1
+
+Project                  | Approach               |   TP   TN   FP   FN |   Prec    Rec     F1    Acc
+-----------------------------------------------------------------------------------------------------
+cjson_demo               | Baseline (diff only)   |    1  109    0    6 |  1.000  0.143  0.250  0.948
+cjson_demo               | Context-Augmented      |    6  109    0    1 |  1.000  0.857  0.923  0.991
+cjson_demo               | Agent-Based            |    4  109    0    3 |  1.000  0.571  0.727  0.974
+cjson_demo               | Algorithmic            |    7  109    0    0 |  1.000  1.000  1.000  1.000
+-----------------------------------------------------------------------------------------------------
+
+Avg F1  Baseline (diff only)   :           0.250
+Avg F1  Context-Augmented  :               0.923
+Delta (Context-Augmented - Baseline)    :  +0.673
+Avg F1  Agent-Based       :                0.727
+Delta (Agent-Based - Context-Augmented)    : -0.196
+Avg F1  Algorithmic :                      1.000
+Delta (Algorithmic - Context-Augmented)    : +0.077
