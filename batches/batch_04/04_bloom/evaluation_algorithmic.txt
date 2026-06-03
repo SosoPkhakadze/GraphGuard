@@ -1,0 +1,17 @@
+========================================================================
+Project : 04_bloom  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['bf_check']
+  Affected : ['main']
+  All fns  : ['bf_add', 'bf_check', 'bf_init', 'bfh1', 'bfh2', 'main']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['bf_check']
+  Predicted affected : ['main']
+  TP=2  TN=4  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

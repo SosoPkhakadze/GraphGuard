@@ -1,0 +1,17 @@
+========================================================================
+Project : 05_tokenizer  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['tok_next']
+  Affected : ['main']
+  All fns  : ['main', 'tok_has_more', 'tok_init', 'tok_next']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['tok_next']
+  Predicted affected : ['main']
+  TP=2  TN=2  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

@@ -1,0 +1,17 @@
+========================================================================
+Project : 09_scheduler  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['sched_next']
+  Affected : ['main']
+  All fns  : ['main', 'sched_add', 'sched_done', 'sched_init', 'sched_next']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['sched_next']
+  Predicted affected : ['main']
+  TP=2  TN=3  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

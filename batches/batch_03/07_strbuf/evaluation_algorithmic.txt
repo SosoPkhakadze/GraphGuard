@@ -1,0 +1,17 @@
+========================================================================
+Project : 07_strbuf  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['sb_append']
+  Affected : ['main']
+  All fns  : ['main', 'sb_append', 'sb_clear', 'sb_init', 'sb_len', 'sb_str']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['sb_append']
+  Predicted affected : ['main']
+  TP=2  TN=4  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

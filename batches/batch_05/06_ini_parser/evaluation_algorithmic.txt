@@ -1,0 +1,17 @@
+========================================================================
+Project : 06_ini_parser  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['ini_load']
+  Affected : ['main']
+  All fns  : ['ini_get', 'ini_init', 'ini_load', 'main']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['ini_load']
+  Predicted affected : ['main']
+  TP=2  TN=2  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

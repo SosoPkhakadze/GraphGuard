@@ -1,0 +1,17 @@
+========================================================================
+Project : 02_counter  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['counter_dec']
+  Affected : ['main']
+  All fns  : ['counter_dec', 'counter_get', 'counter_inc', 'counter_init', 'counter_reset', 'main']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['counter_dec']
+  Predicted affected : ['main']
+  TP=2  TN=4  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

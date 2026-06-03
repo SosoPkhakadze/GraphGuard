@@ -1,0 +1,17 @@
+========================================================================
+Project : 09_pubsub  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['ps_pub']
+  Affected : ['main']
+  All fns  : ['main', 'on_msg', 'ps_count', 'ps_init', 'ps_pub', 'ps_sub']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['ps_pub']
+  Predicted affected : ['main']
+  TP=2  TN=4  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

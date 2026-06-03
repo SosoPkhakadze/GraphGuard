@@ -1,0 +1,17 @@
+========================================================================
+Project : 06_bitset  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['bs_count']
+  Affected : ['main']
+  All fns  : ['bs_clear', 'bs_count', 'bs_set', 'bs_test', 'main']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['bs_count']
+  Predicted affected : ['main']
+  TP=2  TN=3  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

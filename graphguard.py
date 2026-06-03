@@ -27,7 +27,7 @@ sys.path.insert(0, ROOT)
 
 from analyzer.callgraph       import CallGraph
 from analyzer.diff_parser     import parse as parse_diff
-from analyzer.impact          import ImpactAnalyzer
+from analyzer.impact          import ImpactAnalyzer, algorithmic_predict
 from analyzer.context_builder import build_diff_with_graph, build_diff_only
 from analyzer.agent           import run_agent
 
@@ -381,47 +381,55 @@ def cmd_analyze(args, cfg):
     else:
         print("  No function bodies matched (header-only or declaration change).")
 
-    # ── Step 3: ask model (or use --model flag) ───────────────────────────────
-    if getattr(args, "model", None):
-        chosen_model_key = resolve_model(args.model)
-    else:
-        chosen_model_key = ask_choice(
-            "Which AI model would you like to use?",
-            [
-                ("gpt-4o",            "GPT-4o          (OpenAI)"),
-                ("gpt-4o-mini",       "GPT-4o mini     (OpenAI, faster)"),
-                ("claude-sonnet-4-6", "Claude Sonnet 4.6  (Anthropic)"),
-                ("claude-opus-4-7",   "Claude Opus 4.7    (Anthropic, most capable)"),
-                ("claude-haiku-4-5-20251001", "Claude Haiku 4.5   (Anthropic, fastest)"),
-            ]
-        )
-    client, provider = get_api_client(chosen_model_key, cfg, args)
-
-    # ── Step 4: ask approach (or use --approach flag) ─────────────────────────
+    # ── Step 3: ask approach first (algorithmic skips the model step) ────────
     if getattr(args, "approach", None):
         approach = args.approach
     else:
         approach = ask_choice(
             "Which analysis approach?",
             [
-                ("diff",  "Diff only          — AI sees only the code change"),
-                ("graph", "Diff + Call Graph  — AI also sees which functions call which"),
-                ("agent", "Agent              — AI retrieves context iteratively"),
+                ("diff",        "Diff only            — AI sees only the code change"),
+                ("graph",       "Diff + Call Graph    — AI also sees which functions call which"),
+                ("agent",       "Agent                — AI retrieves context iteratively"),
+                ("algorithmic", "Algorithmic          — Pure graph traversal, no AI, no API key"),
             ]
         )
+
+    # ── Step 4: ask model only if the approach actually needs one ────────────
+    chosen_model_key = None
+    client = provider = None
+    if approach != "algorithmic":
+        if getattr(args, "model", None):
+            chosen_model_key = resolve_model(args.model)
+        else:
+            chosen_model_key = ask_choice(
+                "Which AI model would you like to use?",
+                [
+                    ("gpt-4o",            "GPT-4o          (OpenAI)"),
+                    ("gpt-4o-mini",       "GPT-4o mini     (OpenAI, faster)"),
+                    ("claude-sonnet-4-6", "Claude Sonnet 4.6  (Anthropic)"),
+                    ("claude-opus-4-7",   "Claude Opus 4.7    (Anthropic, most capable)"),
+                    ("claude-haiku-4-5-20251001", "Claude Haiku 4.5   (Anthropic, fastest)"),
+                ]
+            )
+        client, provider = get_api_client(chosen_model_key, cfg, args)
 
     # ── Step 5: query ─────────────────────────────────────────────────────────
     cg_content = build_diff_with_graph(diff_text, cg, changed_fns)
 
     approach_label = {"diff": "Diff only", "graph": "Diff + Call Graph",
-                      "agent": "Agent"}[approach]
-    print(f"\n  Querying {chosen_model_key} ({approach_label})...", end=" ", flush=True)
+                      "agent": "Agent", "algorithmic": "Algorithmic"}[approach]
+    runner_label = chosen_model_key if chosen_model_key else "pure graph traversal"
+    print(f"\n  Running {runner_label} ({approach_label})...", end=" ", flush=True)
 
     try:
         if approach == "diff":
             resp = query_model(build_diff_only(diff_text), client, provider, chosen_model_key)
         elif approach == "graph":
             resp = query_model(cg_content, client, provider, chosen_model_key)
+        elif approach == "algorithmic":
+            from analyzer.impact import algorithmic_predict
+            resp = algorithmic_predict(changed_fns, cg)
         else:
             print()  # newline before agent tool call log
             resp = run_agent(diff_text, changed_fns, cg, all_c_files, client, chosen_model_key,
@@ -447,7 +455,7 @@ def cmd_analyze(args, cfg):
 
     print(f"\n{div}")
     print(f"  IMPACT ANALYSIS RESULT")
-    print(f"  Model    : {chosen_model_key}")
+    print(f"  Model    : {chosen_model_key or '— (no AI used)'}")
     print(f"  Approach : {approach_label}")
     print(f"  Severity : {severity_marker}")
     print(div)
@@ -563,35 +571,41 @@ def process_project(project_dir: str, client, provider: str, model: str,
                 set(resp.get("affected_functions", []))) & all_fns
 
     model_label = f"{provider.upper()} / {model}"
-    print(f"  [{name}] Querying {model_label} (Friend 1)...")
+    print(f"  [{name}] Querying {model_label} (Baseline)...")
     r1 = query_model(build_diff_only(diff_text), client, provider, model, PROMPT_BATCH)
 
-    print(f"  [{name}] Querying {model_label} (Friend 2)...")
+    print(f"  [{name}] Querying {model_label} (Context-Augmented)...")
     r2 = query_model(cg_content, client, provider, model, PROMPT_BATCH)
 
     m1 = compute_metrics(predicted_set(r1), gt_pos, all_fns)
     m2 = compute_metrics(predicted_set(r2), gt_pos, all_fns)
 
-    # ── Friend 3 (agent) — opt-in, works with any provider ───────────────────
+    # ── Agent-Based — opt-in, works with any provider ───────────────────
     m3 = r3 = None
     if run_agent_eval:
-        print(f"  [{name}] Querying {model_label} (Friend 3 / Agent)...")
+        print(f"  [{name}] Querying {model_label} (Agent-Based)...")
         try:
             raw3 = run_agent(diff_text, changed_fns, cg, c_files, client, model,
                              provider=provider, cg_content=cg_content)
             r3   = raw3
             m3   = compute_metrics(predicted_set(raw3), gt_pos, all_fns)
         except RuntimeError as e:
-            print(f"  [{name}] Agent error: {e} — skipping Friend 3.")
+            print(f"  [{name}] Agent error: {e} — skipping Agent-Based.")
 
+    # ── Algorithmic — pure graph traversal, no LLM, always-on ─────
+    print(f"  [{name}] Computing Algorithmic...")
+    r4 = algorithmic_predict(changed_fns, cg)
+    m4 = compute_metrics(predicted_set(r4), gt_pos, all_fns)
+
+    # ── Winner among the LLM friends (algorithmic excluded from "winner") ────
     scores = [m1["F1"], m2["F1"]] + ([m3["F1"]] if m3 else [])
     best   = max(scores)
     if m3 and m3["F1"] == best and m3["F1"] > m2["F1"]:
-        winner = "Friend 3 (agent)"
+        winner = "Agent-Based"
     elif m2["F1"] == best and m2["F1"] > m1["F1"]:
-        winner = "Friend 2 (diff+graph)"
+        winner = "Context-Augmented"
     elif m1["F1"] == best and m1["F1"] > m2["F1"]:
-        winner = "Friend 1 (diff only)"
+        winner = "Baseline (diff only)"
     else:
         winner = "Tie"
 
@@ -603,7 +617,7 @@ def process_project(project_dir: str, client, provider: str, model: str,
         f"  Changed  : {sorted(gt['changed_functions'])}",
         f"  Affected : {sorted(gt['affected_functions'])}",
         f"  All fns  : {sorted(gt['all_functions'])}",
-        "", div2, "FRIEND 1  (diff only)", div2,
+        "", div2, "APPROACH 1 - BASELINE (diff only)", div2,
         f"  Predicted changed  : {sorted(r1.get('changed_functions', []))}",
         f"  Predicted affected : {sorted(r1.get('affected_functions', []))}",
         f"  Concerns : {r1.get('concerns', '')}",
@@ -612,7 +626,7 @@ def process_project(project_dir: str, client, provider: str, model: str,
     if m1["FP_fns"]: lines.append(f"  False alarms : {m1['FP_fns']}")
     if m1["FN_fns"]: lines.append(f"  Missed       : {m1['FN_fns']}")
     lines += [
-        "", div2, "FRIEND 2  (diff + call graph)", div2,
+        "", div2, "APPROACH 2 - CONTEXT-AUGMENTED (diff + call graph)", div2,
         f"  Predicted changed  : {sorted(r2.get('changed_functions', []))}",
         f"  Predicted affected : {sorted(r2.get('affected_functions', []))}",
         f"  Concerns : {r2.get('concerns', '')}",
@@ -624,7 +638,7 @@ def process_project(project_dir: str, client, provider: str, model: str,
     if m3 and r3:
         tool_log = r3.get("_tool_log", [])
         lines += [
-            "", div2, "FRIEND 3  (agent — iterative tool calls)", div2,
+            "", div2, "APPROACH 3 - AGENT-BASED (iterative tool calls)", div2,
             f"  Tools called   : {', '.join(tool_log) if tool_log else '(none recorded)'}",
             f"  Predicted changed  : {sorted(r3.get('changed_functions', []))}",
             f"  Predicted affected : {sorted(r3.get('affected_functions', []))}",
@@ -633,13 +647,24 @@ def process_project(project_dir: str, client, provider: str, model: str,
         ]
         if m3["FP_fns"]: lines.append(f"  False alarms : {m3['FP_fns']}")
         if m3["FN_fns"]: lines.append(f"  Missed       : {m3['FN_fns']}")
-        f3_summary = f"    Friend 3 F1 = {m3['F1']:.3f}"
+        f3_summary = f"    Agent-Based F1 = {m3['F1']:.3f}"
     else:
         f3_summary = ""
 
     lines += [
+        "", div2, "APPROACH 4 - ALGORITHMIC (pure graph traversal, no LLM)", div2,
+        f"  Predicted changed  : {sorted(r4.get('changed_functions', []))}",
+        f"  Predicted affected : {sorted(r4.get('affected_functions', []))}",
+        metrics_line(m4),
+    ]
+    if m4["FP_fns"]: lines.append(f"  False alarms : {m4['FP_fns']}")
+    if m4["FN_fns"]: lines.append(f"  Missed       : {m4['FN_fns']}")
+    f4_summary = f"    Algorithmic F1 = {m4['F1']:.3f}"
+
+    lines += [
         "", div, f"WINNER : {winner}",
-        f"  Friend 1 F1 = {m1['F1']:.3f}    Friend 2 F1 = {m2['F1']:.3f}{f3_summary}",
+        f"  Baseline F1 = {m1['F1']:.3f}    Context-Augmented F1 = {m2['F1']:.3f}"
+        f"{f3_summary}{f4_summary}",
         div, "",
     ]
 
@@ -647,11 +672,12 @@ def process_project(project_dir: str, client, provider: str, model: str,
         f.write("\n".join(lines))
 
     f3_str = f"  F3={m3['F1']:.3f}" if m3 else ""
+    f4_str = f"  F4={m4['F1']:.3f}"
     print(f"  [{name}] {os.path.basename(eval_file)} written "
-          f"(F1={m1['F1']:.3f}  F2={m2['F1']:.3f}{f3_str}  Winner: {winner})")
-    result = {"project": name, "friend1": m1, "friend2": m2}
+          f"(F1={m1['F1']:.3f}  F2={m2['F1']:.3f}{f3_str}{f4_str}  Winner: {winner})")
+    result = {"project": name, "baseline": m1, "context_augmented": m2, "algorithmic": m4}
     if m3:
-        result["friend3"] = m3
+        result["agent_based"] = m3
     return result
 
 
@@ -660,7 +686,7 @@ def process_project(project_dir: str, client, provider: str, model: str,
 def write_batch_results(results: list, batch_dir: str, model: str,
                         batch_label: str = "", out_suffix: str = ""):
     valid      = [r for r in results if r]
-    has_agent  = any("friend3" in r for r in valid)
+    has_agent  = any("agent_based" in r for r in valid)
     COL        = 24
     header     = (f"{'Project':<{COL}} | {'Approach':<22} | "
                   f"{'TP':>4} {'TN':>4} {'FP':>4} {'FN':>4} | "
@@ -672,14 +698,16 @@ def write_batch_results(results: list, batch_dir: str, model: str,
         f"Projects evaluated : {len(valid)}/{len(results)}",
         "", header, sep,
     ]
-    f1_list, f2_list, f3_list = [], [], []
+    f1_list, f2_list, f3_list, f4_list = [], [], [], []
     for r in valid:
         rows = [
-            ("Friend 1 (diff only)",  r["friend1"], f1_list),
-            ("Friend 2 (diff+graph)", r["friend2"], f2_list),
+            ("Baseline (diff only)",  r["baseline"], f1_list),
+            ("Context-Augmented", r["context_augmented"], f2_list),
         ]
-        if "friend3" in r:
-            rows.append(("Friend 3 (agent)", r["friend3"], f3_list))
+        if "agent_based" in r:
+            rows.append(("Agent-Based", r["agent_based"], f3_list))
+        if "algorithmic" in r:
+            rows.append(("Algorithmic", r["algorithmic"], f4_list))
         for label, m, lst in rows:
             lst.append(m["F1"])
             lines.append(
@@ -694,15 +722,21 @@ def write_batch_results(results: list, batch_dir: str, model: str,
     d12  = avg(f2_list) - avg(f1_list)
     lines += [
         "",
-        f"{'Avg F1  Friend 1 (diff only)   :':<42} {avg(f1_list):.3f}",
-        f"{'Avg F1  Friend 2 (diff+graph)  :':<42} {avg(f2_list):.3f}",
-        f"{'Delta (Friend 2 - Friend 1)    :':<42} {'+' if d12>=0 else ''}{d12:.3f}",
+        f"{'Avg F1  Baseline (diff only)   :':<42} {avg(f1_list):.3f}",
+        f"{'Avg F1  Context-Augmented  :':<42} {avg(f2_list):.3f}",
+        f"{'Delta (Context-Augmented - Baseline)    :':<42} {'+' if d12>=0 else ''}{d12:.3f}",
     ]
     if has_agent and f3_list:
         d23 = avg(f3_list) - avg(f2_list)
         lines += [
-            f"{'Avg F1  Friend 3 (agent)       :':<42} {avg(f3_list):.3f}",
-            f"{'Delta (Friend 3 - Friend 2)    :':<42} {'+' if d23>=0 else ''}{d23:.3f}",
+            f"{'Avg F1  Agent-Based       :':<42} {avg(f3_list):.3f}",
+            f"{'Delta (Agent-Based - Context-Augmented)    :':<42} {'+' if d23>=0 else ''}{d23:.3f}",
+        ]
+    if f4_list:
+        d42 = avg(f4_list) - avg(f2_list)
+        lines += [
+            f"{'Avg F1  Algorithmic :':<42} {avg(f4_list):.3f}",
+            f"{'Delta (Algorithmic - Context-Augmented)    :':<42} {'+' if d42>=0 else ''}{d42:.3f}",
         ]
     lines.append("")
     out_path = os.path.join(batch_dir, f"batch_results{out_suffix}.txt")
@@ -722,7 +756,7 @@ def cmd_batch(args, cfg):
     run_agent_eval = getattr(args, "agent", False)
 
     if run_agent_eval:
-        print(f"Agent evaluation enabled — Friend 3 will run with {model}.")
+        print(f"Agent evaluation enabled — Agent-Based will run with {model}.")
 
     batch_dir = os.path.abspath(args.batch_dir)
     if not os.path.isdir(batch_dir):
@@ -748,6 +782,131 @@ def cmd_batch(args, cfg):
             results.append(None)
 
     write_batch_results(results, batch_dir, model, batch_label, out_suffix)
+
+
+# ── Subcommand: algorithmic ───────────────────────────────────────────────────
+#
+# Pure graph-traversal evaluation — no LLM, no API key. Iterates every batch's
+# projects, builds the call graph, predicts the affected set with
+# `algorithmic_predict`, and writes a small `evaluation_algorithmic.txt` per
+# project plus a `batch_results_algorithmic.txt` per batch.
+
+def _run_algorithmic_for_project(project_dir: str) -> dict | None:
+    name      = os.path.basename(project_dir)
+    src_dir   = os.path.join(project_dir, "src")
+    diff_file = os.path.join(project_dir, "diff.txt")
+    gt_file   = os.path.join(project_dir, "ground_truth.json")
+    out_file  = os.path.join(project_dir, "evaluation_algorithmic.txt")
+
+    for path in [diff_file, gt_file]:
+        if not os.path.isfile(path):
+            print(f"  [{name}] missing {os.path.basename(path)} — skipping.")
+            return None
+
+    c_files = sorted(glob.glob(os.path.join(src_dir, "*.c")))
+    if not c_files:
+        print(f"  [{name}] no .c files — skipping.")
+        return None
+
+    cg = CallGraph()
+    cg.build(c_files)
+
+    with open(diff_file, encoding="utf-8") as f:
+        diff_text = f.read()
+    file_to_lines = parse_diff(diff_text, repo_root=os.path.abspath(project_dir))
+    changed_fns   = ImpactAnalyzer(cg).find_changed_functions(file_to_lines)
+
+    with open(gt_file, encoding="utf-8") as f:
+        gt = json.load(f)
+    all_fns = set(gt["all_functions"])
+    gt_pos  = set(gt["changed_functions"]) | set(gt["affected_functions"])
+
+    pred = algorithmic_predict(changed_fns, cg)
+    predicted = (set(pred["changed_functions"]) |
+                 set(pred["affected_functions"])) & all_fns
+    m = compute_metrics(predicted, gt_pos, all_fns)
+
+    div  = "=" * 72
+    div2 = "-" * 72
+    lines = [
+        div, f"Project : {name}  [ALGORITHMIC — pure graph traversal]", div, "",
+        "GROUND TRUTH",
+        f"  Changed  : {sorted(gt['changed_functions'])}",
+        f"  Affected : {sorted(gt['affected_functions'])}",
+        f"  All fns  : {sorted(gt['all_functions'])}",
+        "", div2, "APPROACH 4 - ALGORITHMIC (pure graph traversal, no LLM)", div2,
+        f"  Predicted changed  : {sorted(pred['changed_functions'])}",
+        f"  Predicted affected : {sorted(pred['affected_functions'])}",
+        metrics_line(m),
+    ]
+    if m["FP_fns"]: lines.append(f"  False alarms : {m['FP_fns']}")
+    if m["FN_fns"]: lines.append(f"  Missed       : {m['FN_fns']}")
+    lines += ["", div, ""]
+
+    with open(out_file, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    print(f"  [{name}] F1={m['F1']:.3f}  TP={m['TP']} FP={m['FP']} FN={m['FN']}")
+    return {"project": name, "metrics": m}
+
+
+def cmd_algorithmic(args, cfg):
+    batches_root = os.path.abspath(args.batch_dir) if args.batch_dir else os.path.join(ROOT, "batches")
+    if not os.path.isdir(batches_root):
+        sys.exit(f"ERROR: directory not found: {batches_root}")
+
+    # If user passed a single batch directly, treat it as a batch. Otherwise
+    # iterate every batch_* subdirectory inside batches/.
+    if os.path.basename(batches_root).startswith("batch_"):
+        batch_dirs = [batches_root]
+    else:
+        batch_dirs = sorted(
+            d for d in glob.glob(os.path.join(batches_root, "batch_*"))
+            if os.path.isdir(d)
+        )
+    if not batch_dirs:
+        sys.exit("ERROR: no batch_* directories found.")
+
+    overall_f1: list[float] = []
+    for bdir in batch_dirs:
+        label = os.path.basename(bdir)
+        print(f"\nBatch : {label}")
+        projects = sorted(d for d in glob.glob(os.path.join(bdir, "*"))
+                          if os.path.isdir(d))
+        rows = []
+        for pdir in projects:
+            try:
+                r = _run_algorithmic_for_project(pdir)
+                if r:
+                    rows.append(r)
+            except Exception as e:
+                print(f"  [{os.path.basename(pdir)}] ERROR: {e}")
+
+        if not rows:
+            continue
+        avg = sum(r["metrics"]["F1"] for r in rows) / len(rows)
+        overall_f1.extend(r["metrics"]["F1"] for r in rows)
+
+        header = "Project                  |   TP   TN   FP   FN |   Prec    Rec     F1    Acc"
+        sep = "-" * len(header)
+        lines = [
+            f"Batch : {label}", "Approach : Algorithmic",
+            f"Projects evaluated : {len(rows)}", "", header, sep,
+        ]
+        for r in rows:
+            m = r["metrics"]
+            lines.append(
+                f"{r['project']:<24} | {m['TP']:>4} {m['TN']:>4} {m['FP']:>4} {m['FN']:>4} | "
+                f"{m['Precision']:>6.3f} {m['Recall']:>6.3f} {m['F1']:>6.3f} {m['Accuracy']:>6.3f}"
+            )
+        lines += [sep, "", f"Avg F1 (algorithmic) : {avg:.3f}", ""]
+        out_path = os.path.join(bdir, "batch_results_algorithmic.txt")
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+        print(f"  -> {os.path.relpath(out_path, ROOT)}  (avg F1 = {avg:.3f})")
+
+    if overall_f1:
+        print(f"\nOverall avg F1 (algorithmic, {len(overall_f1)} projects) : "
+              f"{sum(overall_f1)/len(overall_f1):.3f}")
 
 
 # ── Subcommand: summary ────────────────────────────────────────────────────────
@@ -811,9 +970,9 @@ def cmd_summary(args, cfg):
 
     has_f3 = any("f3_f1" in r for r in all_rows)
     COL    = 24
-    f3_col = f" {'F1 Friend3':>10}" if has_f3 else ""
+    f3_col = f" {'F1 AgentBased':>10}" if has_f3 else ""
     header = (f"{'Batch':<14} {'Project':<{COL}} | "
-              f"{'F1 Friend1':>10} {'F1 Friend2':>10}{f3_col} | {'Winner':<22}")
+              f"{'F1 Baseline':>10} {'F1 ContextAugmented':>10}{f3_col} | {'Winner':<22}")
     sep = "-" * len(header)
     lines = [
         "=" * len(header), "CROSS-BATCH SUMMARY", "=" * len(header),
@@ -827,15 +986,15 @@ def cmd_summary(args, cfg):
             if prev_batch is not None:
                 lines.append(sep)
             prev_batch = r["batch"]
-        scores = {"Friend1": r["f1_f1"], "Friend2": r["f2_f1"]}
+        scores = {"Baseline": r["f1_f1"], "ContextAugmented": r["f2_f1"]}
         if "f3_f1" in r:
-            scores["Friend3"] = r["f3_f1"]
+            scores["AgentBased"] = r["f3_f1"]
         best_score = max(scores.values())
         winners    = [k for k, v in scores.items() if v == best_score]
         winner     = winners[0] if len(winners) == 1 else "Tie"
-        if winner == "Friend3": win3 += 1
-        elif winner == "Friend2": win2 += 1
-        elif winner == "Friend1": win1 += 1
+        if winner == "AgentBased": win3 += 1
+        elif winner == "ContextAugmented": win2 += 1
+        elif winner == "Baseline": win1 += 1
         else: ties += 1
         f3_val = f" {r['f3_f1']:>10.3f}" if has_f3 else ""
         lines.append(
@@ -847,12 +1006,12 @@ def cmd_summary(args, cfg):
     lines += ["", "PER-BATCH AVERAGES", sep]
     for bs in batch_summaries:
         delta = bs["avg_f2"] - bs["avg_f1"]
-        f3_part = (f"  Friend3={bs['avg_f3']:.3f}  "
+        f3_part = (f"  AgentBased={bs['avg_f3']:.3f}  "
                    f"Delta(F3-F2)={bs['avg_f3']-bs['avg_f2']:+.3f}"
                    if "avg_f3" in bs else "")
         lines.append(
             f"{bs['batch']:<14} n={bs['n']:<4} "
-            f"Friend1={bs['avg_f1']:.3f}  Friend2={bs['avg_f2']:.3f}  "
+            f"Baseline={bs['avg_f1']:.3f}  ContextAugmented={bs['avg_f2']:.3f}  "
             f"Delta(F2-F1)={delta:+.3f}{f3_part}"
         )
     lines.append(sep)
@@ -863,23 +1022,23 @@ def cmd_summary(args, cfg):
     f3rows = [r for r in all_rows if "f3_f1" in r]
     lines += [
         "", f"OVERALL  ({total} projects across {len(batch_summaries)} batches)", sep,
-        f"  Avg F1  Friend 1 (diff only)   : {ov1:.3f}",
-        f"  Avg F1  Friend 2 (diff+graph)  : {ov2:.3f}",
-        f"  Delta  (Friend2 - Friend1)     : {ov2-ov1:+.3f}",
+        f"  Avg F1  Baseline (diff only)   : {ov1:.3f}",
+        f"  Avg F1  Context-Augmented  : {ov2:.3f}",
+        f"  Delta  (ContextAugmented - Baseline)     : {ov2-ov1:+.3f}",
     ]
     if f3rows:
         ov3 = sum(r["f3_f1"] for r in f3rows) / len(f3rows)
         lines += [
-            f"  Avg F1  Friend 3 (agent)       : {ov3:.3f}  (n={len(f3rows)})",
-            f"  Delta  (Friend3 - Friend2)     : {ov3-ov2:+.3f}",
+            f"  Avg F1  Agent-Based       : {ov3:.3f}  (n={len(f3rows)})",
+            f"  Delta  (AgentBased - ContextAugmented)     : {ov3-ov2:+.3f}",
         ]
     lines += [
         "",
-        f"  Friend2 wins : {win2}/{total}  ({100*win2/total:.1f}%)",
-        f"  Friend1 wins : {win1}/{total}  ({100*win1/total:.1f}%)",
+        f"  ContextAugmented wins : {win2}/{total}  ({100*win2/total:.1f}%)",
+        f"  Baseline wins : {win1}/{total}  ({100*win1/total:.1f}%)",
     ]
     if has_f3:
-        lines.append(f"  Friend3 wins : {win3}/{total}  ({100*win3/total:.1f}%)")
+        lines.append(f"  AgentBased wins : {win3}/{total}  ({100*win3/total:.1f}%)")
     lines += [f"  Ties         : {ties}/{total}  ({100*ties/total:.1f}%)", sep, ""]
 
     out_path = os.path.join(ROOT, "reports", "all_batches_summary.txt")
@@ -927,7 +1086,7 @@ def cmd_compare(args, cfg):
     lines = [
         div,
         "GPT-4o  vs  Claude (claude-sonnet-4-6)  --  50 Projects / 5 Batches",
-        "F1-1 = Friend 1 (diff only)   F1-2 = Friend 2 (diff + call graph)",
+        "F1-1 = Baseline (diff only)   F1-2 = Context-Augmented",
         div, "", header, div2,
     ]
 
@@ -961,7 +1120,7 @@ def cmd_compare(args, cfg):
 
     def avg(lst): return sum(lst) / len(lst) if lst else 0.0
 
-    lines += ["", "PER-BATCH AVERAGES (Friend 2 -- diff + call graph)", div2]
+    lines += ["", "PER-BATCH AVERAGES (Context-Augmented -- diff + call graph)", div2]
     for label, _ in BATCHES:
         if label not in batch_agg:
             continue
@@ -990,16 +1149,16 @@ def cmd_compare(args, cfg):
         "", f"OVERALL  ({n} projects across 5 batches)", div, "",
         f"  {'Metric':<42} {'GPT-4o':>10} {'Claude':>10}",
         f"  {'-'*62}",
-        f"  {'Avg F1 -- Friend 1  (diff only)':<42} {og_f1:>10.3f} {oc_f1:>10.3f}",
-        f"  {'Avg F1 -- Friend 2  (diff + call graph)':<42} {og_f2:>10.3f} {oc_f2:>10.3f}",
+        f"  {'Avg F1 -- Baseline  (diff only)':<42} {og_f1:>10.3f} {oc_f1:>10.3f}",
+        f"  {'Avg F1 -- Context-Augmented  (diff + call graph)':<42} {og_f2:>10.3f} {oc_f2:>10.3f}",
         f"  {'Graph context improvement (F2-F1)':<42} {gpt_delta:>+10.3f} {cld_delta:>+10.3f}",
         "",
-        f"  Friend-2 head-to-head (which model scored higher per project):",
+        f"  Context-Augmented head-to-head (which model scored higher per project):",
         f"    GPT-4o wins  : {gpt_wins}/{n}  ({100*gpt_wins/n:.1f}%)",
         f"    Claude wins  : {cld_wins}/{n}  ({100*cld_wins/n:.1f}%)",
         f"    Ties         : {ties_f2}/{n}  ({100*ties_f2/n:.1f}%)",
         "",
-        f"  Overall winner (Friend-2 Avg F1): "
+        f"  Overall winner (Context-Augmented Avg F1): "
         f"{'GPT-4o' if og_f2 > oc_f2 else 'Claude' if oc_f2 > og_f2 else 'Tie'}"
         f"  (GPT={og_f2:.3f}  Claude={oc_f2:.3f}  delta={oc_f2-og_f2:+.3f})",
         "", div, "",
@@ -1083,8 +1242,10 @@ batch examples:
                            help="Use a specific diff file instead of git diff")
     p_analyze.add_argument("--model", "-m", default=None,
                            help="Skip model menu (gpt, claude, claude-opus, claude-haiku)")
-    p_analyze.add_argument("--approach", choices=["diff", "graph", "agent"], default=None,
-                           help="Skip approach menu (diff, graph, agent)")
+    p_analyze.add_argument("--approach",
+                           choices=["diff", "graph", "agent", "algorithmic"],
+                           default=None,
+                           help="Skip approach menu (diff, graph, agent, algorithmic)")
 
     # batch
     p_batch = sub.add_parser("batch", help="Evaluate a batch directory (thesis mode)")
@@ -1092,7 +1253,15 @@ batch examples:
     p_batch.add_argument("--model", "-m", default="gpt", help="Model (default: gpt)")
     p_batch.add_argument("--api-key", help="Override API key for this run")
     p_batch.add_argument("--agent", action="store_true",
-                         help="Also run Friend 3 (agent) evaluation — Anthropic models only")
+                         help="Also run Agent-Based evaluation — Anthropic models only")
+
+    # algorithmic
+    p_alg = sub.add_parser(
+        "algorithmic",
+        help="Run Algorithmic (pure graph traversal, no LLM) across batches"
+    )
+    p_alg.add_argument("batch_dir", nargs="?", default=None,
+                       help="Single batch dir, or omit to run all batches/batch_*")
 
     # summary
     sub.add_parser("summary", help="Regenerate cross-batch GPT summary")
@@ -1112,11 +1281,12 @@ batch examples:
 
     cfg = load_config()
     dispatch = {
-        "analyze": cmd_analyze,
-        "batch":   cmd_batch,
-        "summary": cmd_summary,
-        "compare": cmd_compare,
-        "config":  cmd_config,
+        "analyze":     cmd_analyze,
+        "batch":       cmd_batch,
+        "algorithmic": cmd_algorithmic,
+        "summary":     cmd_summary,
+        "compare":     cmd_compare,
+        "config":      cmd_config,
     }
     dispatch[args.command](args, cfg)
 

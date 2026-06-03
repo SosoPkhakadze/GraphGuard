@@ -1,0 +1,17 @@
+========================================================================
+Project : 02_utf8  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['utf8_strlen']
+  Affected : ['main']
+  All fns  : ['main', 'utf8_charlen', 'utf8_strlen', 'utf8_valid']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['utf8_strlen']
+  Predicted affected : ['main']
+  TP=2  TN=2  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

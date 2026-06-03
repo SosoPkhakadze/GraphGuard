@@ -1,0 +1,17 @@
+========================================================================
+Project : 03_minmax  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['find_max', 'find_min']
+  Affected : ['main', 'range']
+  All fns  : ['find_max', 'find_min', 'main', 'range']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['find_max', 'find_min']
+  Predicted affected : ['main', 'range']
+  TP=4  TN=0  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

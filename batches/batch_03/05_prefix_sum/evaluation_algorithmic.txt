@@ -1,0 +1,18 @@
+========================================================================
+Project : 05_prefix_sum  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['prefix_build']
+  Affected : ['main', 'prefix_query', 'prefix_total']
+  All fns  : ['main', 'prefix_build', 'prefix_query', 'prefix_total']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['prefix_build']
+  Predicted affected : ['main']
+  TP=2  TN=0  FP=0  FN=2  Prec=1.000  Rec=0.500  F1=0.667  Acc=0.500
+  Missed       : ['prefix_query', 'prefix_total']
+
+========================================================================

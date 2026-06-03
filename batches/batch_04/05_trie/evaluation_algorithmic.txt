@@ -1,0 +1,18 @@
+========================================================================
+Project : 05_trie  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['trie_insert']
+  Affected : ['main', 'trie_search']
+  All fns  : ['main', 'trie_init', 'trie_insert', 'trie_search']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['trie_insert']
+  Predicted affected : ['main']
+  TP=2  TN=1  FP=0  FN=1  Prec=1.000  Rec=0.667  F1=0.800  Acc=0.750
+  Missed       : ['trie_search']
+
+========================================================================

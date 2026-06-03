@@ -1,0 +1,17 @@
+========================================================================
+Project : 09_argparse  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['ap_parse']
+  Affected : ['main']
+  All fns  : ['ap_add', 'ap_found', 'ap_init', 'ap_parse', 'main']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['ap_parse']
+  Predicted affected : ['main']
+  TP=2  TN=3  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

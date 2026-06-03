@@ -70,3 +70,24 @@ class ImpactAnalyzer:
             result.add(caller)
             result |= self._all_callers(caller, visited)
         return result
+
+
+def algorithmic_predict(changed_fns: set, cg) -> dict:
+    """
+    Pure deterministic impact prediction - no LLM involved.
+
+    Treats every transitive caller of a changed function as "affected".
+    Returned dict shape matches the LLM approaches so the same metrics and
+    file-writing code can consume it.
+    """
+    analyzer = ImpactAnalyzer(cg)
+    affected: set = set()
+    for fn in changed_fns:
+        affected |= analyzer._all_callers(fn)
+    return {
+        "changed_functions":  sorted(changed_fns),
+        "affected_functions": sorted(affected),
+        "concerns": ("Pure structural analysis: every transitive caller of a changed "
+                     "function is reported as affected. No semantic reasoning."),
+        "severity": "unknown",
+    }

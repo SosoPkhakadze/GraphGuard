@@ -1,0 +1,17 @@
+========================================================================
+Project : 03_linked_list  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['list_pop', 'list_size']
+  Affected : ['main']
+  All fns  : ['list_pop', 'list_push', 'list_size', 'main']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['list_pop', 'list_size']
+  Predicted affected : ['main']
+  TP=3  TN=1  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

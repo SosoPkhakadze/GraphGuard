@@ -1,0 +1,17 @@
+========================================================================
+Project : 05_event_bus  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['eb_emit']
+  Affected : ['main']
+  All fns  : ['eb_count', 'eb_emit', 'eb_init', 'eb_sub', 'main', 'on_ev']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['eb_emit']
+  Predicted affected : ['main']
+  TP=2  TN=4  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

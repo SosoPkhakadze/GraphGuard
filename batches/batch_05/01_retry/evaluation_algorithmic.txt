@@ -1,0 +1,17 @@
+========================================================================
+Project : 01_retry  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['retry_run']
+  Affected : ['main']
+  All fns  : ['always_fail', 'always_ok', 'main', 'retry_count', 'retry_run']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['retry_run']
+  Predicted affected : ['main']
+  TP=2  TN=3  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

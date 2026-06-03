@@ -1,0 +1,17 @@
+========================================================================
+Project : 03_hashmap  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['hm_get']
+  Affected : ['hm_contains', 'main']
+  All fns  : ['hm_contains', 'hm_get', 'hm_hash', 'hm_init', 'hm_set', 'main']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['hm_get']
+  Predicted affected : ['hm_contains', 'main']
+  TP=3  TN=3  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

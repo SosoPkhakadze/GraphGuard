@@ -1,0 +1,17 @@
+========================================================================
+Project : 08_config_parser  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['config_get']
+  Affected : ['config_has', 'main']
+  All fns  : ['config_get', 'config_has', 'config_init', 'config_set', 'main', 'parse_file', 'parse_line']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['config_get']
+  Predicted affected : ['config_has', 'main']
+  TP=3  TN=4  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

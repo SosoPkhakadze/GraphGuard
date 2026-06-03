@@ -1,0 +1,17 @@
+========================================================================
+Project : 08_csv  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['csv_next']
+  Affected : ['csv_count', 'main']
+  All fns  : ['csv_count', 'csv_init', 'csv_next', 'main']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['csv_next']
+  Predicted affected : ['csv_count', 'main']
+  TP=3  TN=1  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

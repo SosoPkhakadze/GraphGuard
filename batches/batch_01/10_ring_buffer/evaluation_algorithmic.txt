@@ -1,0 +1,17 @@
+========================================================================
+Project : 10_ring_buffer  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['buf_read', 'buf_write']
+  Affected : ['buf_sum', 'main']
+  All fns  : ['buf_full', 'buf_init', 'buf_read', 'buf_size', 'buf_sum', 'buf_write', 'main']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['buf_read', 'buf_write']
+  Predicted affected : ['buf_sum', 'main']
+  TP=4  TN=3  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

@@ -1,0 +1,17 @@
+========================================================================
+Project : 03_leaky_bucket  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['lb_drain']
+  Affected : ['lb_add', 'main']
+  All fns  : ['lb_add', 'lb_drain', 'lb_init', 'lb_level', 'main']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['lb_drain']
+  Predicted affected : ['lb_add', 'main']
+  TP=3  TN=2  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================

@@ -1,0 +1,17 @@
+========================================================================
+Project : 01_timer  [ALGORITHMIC — pure graph traversal]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['timer_elapsed']
+  Affected : ['main']
+  All fns  : ['main', 'timer_duration', 'timer_elapsed', 'timer_start', 'timer_stop']
+
+------------------------------------------------------------------------
+FRIEND 4  (algorithmic — pure graph traversal, no LLM)
+------------------------------------------------------------------------
+  Predicted changed  : ['timer_elapsed']
+  Predicted affected : ['main']
+  TP=2  TN=3  FP=0  FN=0  Prec=1.000  Rec=1.000  F1=1.000  Acc=1.000
+
+========================================================================
