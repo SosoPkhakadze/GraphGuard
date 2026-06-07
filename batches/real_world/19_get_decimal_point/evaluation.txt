@@ -1,0 +1,41 @@
+========================================================================
+Project : 19_get_decimal_point  [OPENAI / gpt-4o]
+========================================================================
+
+GROUND TRUTH
+  Changed  : ['get_decimal_point']
+  Affected : ['cJSON_Parse', 'cJSON_ParseWithLength', 'cJSON_ParseWithLengthOpts', 'cJSON_ParseWithOpts', 'cJSON_Print', 'cJSON_PrintBuffered', 'cJSON_PrintPreallocated', 'cJSON_PrintUnformatted', 'parse_array', 'parse_number', 'parse_object', 'parse_value', 'print', 'print_array', 'print_number', 'print_object', 'print_value']
+  All fns  : ['add_item_to_array', 'add_item_to_object', 'buffer_skip_whitespace', 'cJSON_AddArrayToObject', 'cJSON_AddBoolToObject', 'cJSON_AddFalseToObject', 'cJSON_AddItemReferenceToArray', 'cJSON_AddItemReferenceToObject', 'cJSON_AddItemToArray', 'cJSON_AddItemToObject', 'cJSON_AddItemToObjectCS', 'cJSON_AddNullToObject', 'cJSON_AddNumberToObject', 'cJSON_AddObjectToObject', 'cJSON_AddRawToObject', 'cJSON_AddStringToObject', 'cJSON_AddTrueToObject', 'cJSON_Compare', 'cJSON_CreateArray', 'cJSON_CreateArrayReference', 'cJSON_CreateBool', 'cJSON_CreateDoubleArray', 'cJSON_CreateFalse', 'cJSON_CreateFloatArray', 'cJSON_CreateIntArray', 'cJSON_CreateNull', 'cJSON_CreateNumber', 'cJSON_CreateObject', 'cJSON_CreateObjectReference', 'cJSON_CreateRaw', 'cJSON_CreateString', 'cJSON_CreateStringArray', 'cJSON_CreateStringReference', 'cJSON_CreateTrue', 'cJSON_Delete', 'cJSON_DeleteItemFromArray', 'cJSON_DeleteItemFromObject', 'cJSON_DeleteItemFromObjectCaseSensitive', 'cJSON_DetachItemFromArray', 'cJSON_DetachItemFromObject', 'cJSON_DetachItemFromObjectCaseSensitive', 'cJSON_DetachItemViaPointer', 'cJSON_Duplicate', 'cJSON_Duplicate_rec', 'cJSON_GetArrayItem', 'cJSON_GetArraySize', 'cJSON_GetErrorPtr', 'cJSON_GetNumberValue', 'cJSON_GetObjectItem', 'cJSON_GetObjectItemCaseSensitive', 'cJSON_GetStringValue', 'cJSON_HasObjectItem', 'cJSON_InitHooks', 'cJSON_InsertItemInArray', 'cJSON_IsArray', 'cJSON_IsBool', 'cJSON_IsFalse', 'cJSON_IsInvalid', 'cJSON_IsNull', 'cJSON_IsNumber', 'cJSON_IsObject', 'cJSON_IsRaw', 'cJSON_IsString', 'cJSON_IsTrue', 'cJSON_Minify', 'cJSON_New_Item', 'cJSON_Parse', 'cJSON_ParseWithLength', 'cJSON_ParseWithLengthOpts', 'cJSON_ParseWithOpts', 'cJSON_Print', 'cJSON_PrintBuffered', 'cJSON_PrintPreallocated', 'cJSON_PrintUnformatted', 'cJSON_ReplaceItemInArray', 'cJSON_ReplaceItemInObject', 'cJSON_ReplaceItemInObjectCaseSensitive', 'cJSON_ReplaceItemViaPointer', 'cJSON_SetNumberHelper', 'cJSON_SetValuestring', 'cJSON_Version', 'cJSON_free', 'cJSON_malloc', 'cJSON_strdup', 'case_insensitive_strcmp', 'cast_away_const', 'compare_double', 'create_reference', 'ensure', 'get_array_item', 'get_decimal_point', 'get_object_item', 'internal_free', 'internal_malloc', 'internal_realloc', 'minify_string', 'parse_array', 'parse_hex4', 'parse_number', 'parse_object', 'parse_string', 'parse_value', 'print', 'print_array', 'print_number', 'print_object', 'print_string', 'print_string_ptr', 'print_value', 'replace_item_in_object', 'skip_multiline_comment', 'skip_oneline_comment', 'skip_utf8_bom', 'suffix_object', 'update_offset', 'utf16_literal_to_utf8']
+
+------------------------------------------------------------------------
+FRIEND 1  (diff only)
+------------------------------------------------------------------------
+  Predicted changed  : ['get_decimal_point']
+  Predicted affected : ['functions that rely on locale-specific number formatting']
+  Concerns : Locale-specific behavior might change, affecting number parsing or formatting.
+  TP=1  TN=98  FP=0  FN=17  Prec=1.000  Rec=0.056  F1=0.105  Acc=0.853
+  Missed       : ['cJSON_Parse', 'cJSON_ParseWithLength', 'cJSON_ParseWithLengthOpts', 'cJSON_ParseWithOpts', 'cJSON_Print', 'cJSON_PrintBuffered', 'cJSON_PrintPreallocated', 'cJSON_PrintUnformatted', 'parse_array', 'parse_number', 'parse_object', 'parse_value', 'print', 'print_array', 'print_number', 'print_object', 'print_value']
+
+------------------------------------------------------------------------
+FRIEND 2  (diff + call graph)
+------------------------------------------------------------------------
+  Predicted changed  : ['get_decimal_point']
+  Predicted affected : ['parse_number', 'print_number']
+  Concerns : Locale-dependent behavior may affect number parsing and printing.
+  TP=3  TN=98  FP=0  FN=15  Prec=1.000  Rec=0.167  F1=0.286  Acc=0.871
+  Missed       : ['cJSON_Parse', 'cJSON_ParseWithLength', 'cJSON_ParseWithLengthOpts', 'cJSON_ParseWithOpts', 'cJSON_Print', 'cJSON_PrintBuffered', 'cJSON_PrintPreallocated', 'cJSON_PrintUnformatted', 'parse_array', 'parse_object', 'parse_value', 'print', 'print_array', 'print_object', 'print_value']
+
+------------------------------------------------------------------------
+FRIEND 3  (agent — iterative tool calls)
+------------------------------------------------------------------------
+  Tools called   : read_function, submit_impact_report
+  Predicted changed  : ['get_decimal_point']
+  Predicted affected : ['parse_number', 'print_number', 'print_object']
+  Concerns : The change in get_decimal_point affects how decimal points are determined based on locale settings. This impacts functions like parse_number, print_number, and print_object, which rely on the correct decimal point for parsing and formatting JSON numbers. If locale settings are incorrect or change unexpectedly, it could lead to parsing or formatting errors.
+  TP=4  TN=98  FP=0  FN=14  Prec=1.000  Rec=0.222  F1=0.364  Acc=0.879
+  Missed       : ['cJSON_Parse', 'cJSON_ParseWithLength', 'cJSON_ParseWithLengthOpts', 'cJSON_ParseWithOpts', 'cJSON_Print', 'cJSON_PrintBuffered', 'cJSON_PrintPreallocated', 'cJSON_PrintUnformatted', 'parse_array', 'parse_object', 'parse_value', 'print', 'print_array', 'print_value']
+
+========================================================================
+WINNER : Friend 3 (agent)
+  Friend 1 F1 = 0.105    Friend 2 F1 = 0.286    Friend 3 F1 = 0.364
+========================================================================

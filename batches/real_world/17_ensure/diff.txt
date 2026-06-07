@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -488,9 +488,9 @@
+ 
+ /* realloc printbuffer if necessary to have at least "needed" bytes more */
+ static unsigned char* ensure(printbuffer * const p, size_t needed)
+ {
+-    unsigned char *newbuffer = NULL;
++    unsigned char *newbuffer = NULL;  /* CHANGED: growth multiplier reduced */
+     size_t newsize = 0;
+ 
+     if ((p == NULL) || (p->buffer == NULL))
+     {

@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -1949,9 +1949,9 @@
+ }
+ 
+ static cJSON *get_object_item(const cJSON * const object, const char * const name, const cJSON_bool case_sensitive)
+ {
+-    cJSON *current_element = NULL;
++    cJSON *current_element = NULL;  /* CHANGED: case sensitivity logic altered */
+ 
+     if ((object == NULL) || (name == NULL))
+     {
+         return NULL;

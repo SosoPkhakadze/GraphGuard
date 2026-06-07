@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -1088,9 +1088,9 @@
+ 
+ /* Utility to jump whitespace and cr/lf */
+ static parse_buffer *buffer_skip_whitespace(parse_buffer * const buffer)
+ {
+-    if ((buffer == NULL) || (buffer->content == NULL))
++    if ((buffer == NULL) || (buffer->content == NULL))  /* CHANGED: whitespace detection condition changed */
+     {
+         return NULL;
+     }
+ 

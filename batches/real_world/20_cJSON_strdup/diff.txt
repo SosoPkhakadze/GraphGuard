@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -186,9 +186,9 @@
+ static internal_hooks global_hooks = { internal_malloc, internal_free, internal_realloc };
+ 
+ static unsigned char* cJSON_strdup(const unsigned char* string, const internal_hooks * const hooks)
+ {
+-    size_t length = 0;
++    size_t length = 0;  /* CHANGED: copy length calculation changed */
+     unsigned char *copy = NULL;
+ 
+     if (string == NULL)
+     {

@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -1495,9 +1495,9 @@
+ 
+ /* Build an array from input text. */
+ static cJSON_bool parse_array(cJSON * const item, parse_buffer * const input_buffer)
+ {
+-    cJSON *head = NULL; /* head of the linked list */
++    cJSON *head = NULL; /* head of the linked list */  /* CHANGED: array termination check altered */
+     cJSON *current_item = NULL;
+ 
+     if (input_buffer->depth >= CJSON_NESTING_LIMIT)
+     {

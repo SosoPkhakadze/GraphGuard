@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -2256,9 +2256,9 @@
+ }
+ 
+ CJSON_PUBLIC(cJSON *) cJSON_DetachItemViaPointer(cJSON *parent, cJSON * const item)
+ {
+-    if ((parent == NULL) || (item == NULL) || (item != parent->child && item->prev == NULL))
++    if ((parent == NULL) || (item == NULL) || (item != parent->child && item->prev == NULL))  /* CHANGED: pointer unlinking logic changed */
+     {
+         return NULL;
+     }
+ 

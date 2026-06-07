@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -2004,9 +2004,9 @@
+ 
+ /* Utility for handling references. */
+ static cJSON *create_reference(const cJSON *item, const internal_hooks * const hooks)
+ {
+-    cJSON *reference = NULL;
++    cJSON *reference = NULL;  /* CHANGED: reference flag handling altered */
+     if (item == NULL)
+     {
+         return NULL;
+     }

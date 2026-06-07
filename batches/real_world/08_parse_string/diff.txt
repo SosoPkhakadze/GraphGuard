@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -822,9 +822,9 @@
+ 
+ /* Parse the input text into an unescaped cinput, and populate item. */
+ static cJSON_bool parse_string(cJSON * const item, parse_buffer * const input_buffer)
+ {
+-    const unsigned char *input_pointer = buffer_at_offset(input_buffer) + 1;
++    const unsigned char *input_pointer = buffer_at_offset(input_buffer) + 1;  /* CHANGED: string escape handling altered */
+     const unsigned char *input_end = buffer_at_offset(input_buffer) + 1;
+     unsigned char *output_pointer = NULL;
+     unsigned char *output = NULL;
+ 

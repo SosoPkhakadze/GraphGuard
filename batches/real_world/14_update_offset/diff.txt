@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -574,9 +574,9 @@
+ 
+ /* calculate the new length of the string in a printbuffer and update the offset */
+ static void update_offset(printbuffer * const buffer)
+ {
+-    const unsigned char *buffer_pointer = NULL;
++    const unsigned char *buffer_pointer = NULL;  /* CHANGED: offset arithmetic changed */
+     if ((buffer == NULL) || (buffer->buffer == NULL))
+     {
+         return;
+     }

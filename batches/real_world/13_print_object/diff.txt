@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -1778,9 +1778,9 @@
+ 
+ /* Render an object to text. */
+ static cJSON_bool print_object(const cJSON * const item, printbuffer * const output_buffer)
+ {
+-    unsigned char *output_pointer = NULL;
++    unsigned char *output_pointer = NULL;  /* CHANGED: object key quoting altered */
+     size_t length = 0;
+     cJSON *current_item = item->child;
+ 
+     if (output_buffer == NULL)

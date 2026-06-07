@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -278,9 +278,9 @@
+ /* get the decimal point character of the current locale */
+ static unsigned char get_decimal_point(void)
+ {
+ #ifdef ENABLE_LOCALES
+-    struct lconv *lconv = localeconv();
++    struct lconv *lconv = localeconv();  /* CHANGED: locale character lookup altered */
+     return (unsigned char) lconv->decimal_point[0];
+ #else
+     return '.';
+ #endif

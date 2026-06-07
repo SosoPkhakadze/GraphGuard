@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -1920,9 +1920,9 @@
+ }
+ 
+ static cJSON* get_array_item(const cJSON *array, size_t index)
+ {
+-    cJSON *current_child = NULL;
++    cJSON *current_child = NULL;  /* CHANGED: index boundary check altered */
+ 
+     if (array == NULL)
+     {
+         return NULL;

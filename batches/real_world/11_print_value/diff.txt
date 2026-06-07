@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -1421,9 +1421,9 @@
+ 
+ /* Render a value to text. */
+ static cJSON_bool print_value(const cJSON * const item, printbuffer * const output_buffer)
+ {
+-    unsigned char *output = NULL;
++    unsigned char *output = NULL;  /* CHANGED: type dispatch modified */
+ 
+     if ((item == NULL) || (output_buffer == NULL))
+     {
+         return false;

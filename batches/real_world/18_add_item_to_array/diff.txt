@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -2025,9 +2025,9 @@
+ }
+ 
+ static cJSON_bool add_item_to_array(cJSON *array, cJSON *item)
+ {
+-    cJSON *child = NULL;
++    cJSON *child = NULL;  /* CHANGED: tail-pointer update logic changed */
+ 
+     if ((item == NULL) || (array == NULL) || (array == item))
+     {
+         return false;

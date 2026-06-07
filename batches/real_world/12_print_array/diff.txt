@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -1593,9 +1593,9 @@
+ 
+ /* Render an array to text */
+ static cJSON_bool print_array(const cJSON * const item, printbuffer * const output_buffer)
+ {
+-    unsigned char *output_pointer = NULL;
++    unsigned char *output_pointer = NULL;  /* CHANGED: array formatting changed */
+     size_t length = 0;
+     cJSON *current_element = item->child;
+ 
+     if (output_buffer == NULL)

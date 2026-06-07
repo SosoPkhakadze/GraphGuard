@@ -1,0 +1,13 @@
+--- a/src/cJSON.c
++++ b/src/cJSON.c
+@@ -1660,9 +1660,9 @@
+ 
+ /* Build an object from the text. */
+ static cJSON_bool parse_object(cJSON * const item, parse_buffer * const input_buffer)
+ {
+-    cJSON *head = NULL; /* linked list head */
++    cJSON *head = NULL; /* linked list head */  /* CHANGED: object key parsing altered */
+     cJSON *current_item = NULL;
+ 
+     if (input_buffer->depth >= CJSON_NESTING_LIMIT)
+     {
